@@ -87,7 +87,7 @@ public class ClienteTest {
         Cliente cliente = new Cliente();
         cliente.setNome("Empresa Teste");
         cliente.setCnpj("12.345.678/0001-90");
-        cliente.setEndereco(new Endereco("Rua Teste", "12345-678", "São Paulo", "SP"));
+        cliente.setEndereco(new Endereco("Rua Teste", "100", "Centro", "12345-678", "São Paulo", "SP"));
 
         // Simula o salvamento (em um teste real, isso seria feito pelo repositório)
         cliente.setDataCriacao(LocalDateTime.now());
@@ -102,7 +102,7 @@ public class ClienteTest {
         Cliente cliente = new Cliente();
         cliente.setNome("Empresa Teste");
         cliente.setCnpj("12.345.678/0001-90");
-        cliente.setEndereco(new Endereco("Rua Teste", "12345-678", "São Paulo", "SP"));
+        cliente.setEndereco(new Endereco("Rua Teste", "100", "Centro", "12345-678", "São Paulo", "SP"));
 
         LocalDateTime dataCriacao = LocalDateTime.now().minusDays(1);
         cliente.setDataCriacao(dataCriacao);
