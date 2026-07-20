@@ -1,22 +1,19 @@
 package com.jubo.cameriere.domain.service;
 
-import com.jubo.cameriere.api.exceptions.*;
-import com.jubo.cameriere.domain.dto.EstanteRequestDTO;
-import com.jubo.cameriere.domain.dto.EstanteResponseDTO;
-import com.jubo.cameriere.domain.dto.EstanteUpdateDTO;
+import com.jubo.cameriere.domain.exception.*;
 import com.jubo.cameriere.domain.model.Cliente;
 import com.jubo.cameriere.domain.model.Estante;
 import com.jubo.cameriere.domain.repository.ClienteRepository;
 import com.jubo.cameriere.domain.repository.EstanteRepository;
-import jakarta.validation.Valid;
+import com.jubo.cameriere.domain.service.comando.EstanteCreateCommand;
+import com.jubo.cameriere.domain.service.comando.EstanteUpdateCommand;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.persistence.EntityNotFoundException;
 
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -33,91 +30,80 @@ public class EstanteService {
 
     private static final DateTimeFormatter PERIODO_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM");
 
-    // CRUD Principal
     @Transactional
-    public EstanteResponseDTO criarEstante(EstanteRequestDTO request) {
-        log.info("Criando estante para cliente: {} no período: {}", request.getClienteId(), request.getPeriodo());
+    public Estante criarEstante(EstanteCreateCommand comando) {
+        log.info("Criando estante para cliente: {} no período: {}", comando.clienteId(), comando.periodo());
 
-        // Validar cliente
-        Cliente cliente = clienteRepository.findById(request.getClienteId())
-                .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado: " + request.getClienteId()));
+        Cliente cliente = clienteRepository.findById(comando.clienteId())
+                .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado: " + comando.clienteId()));
 
         if (!cliente.getAtivo()) {
             throw new ClienteInativoException("Não é possível criar estante para cliente inativo");
         }
 
-        // Validar período
-        validarPeriodo(request.getPeriodo());
+        validarPeriodo(comando.periodo());
 
-        // Verificar se já existe estante ativa no período
-        if (estanteRepository.existsByPeriodoAndClienteIdAndAtivaTrue(request.getPeriodo(), request.getClienteId())) {
+        if (estanteRepository.existsByPeriodoAndClienteIdAndAtivaTrue(comando.periodo(), comando.clienteId())) {
             throw new EstanteJaExisteException(
                     String.format("Já existe uma estante ativa para o cliente %d no período %s",
-                            request.getClienteId(), request.getPeriodo()));
+                            comando.clienteId(), comando.periodo()));
         }
 
-        // Criar estante
         Estante estante = Estante.builder()
-                .periodo(request.getPeriodo())
-                .observacao(request.getObservacao())
+                .periodo(comando.periodo())
+                .observacao(comando.observacao())
                 .cliente(cliente)
-                .ativa(request.getAtiva() != null ? request.getAtiva() : true)
-                .empresa(request.getEmpresa())
+                .ativa(comando.ativa() != null ? comando.ativa() : true)
+                .empresa(comando.empresa())
                 .build();
 
-        Estante savedEstante = estanteRepository.save(estante);
-
-        return toResponseDTO(savedEstante);
+        Estante saved = estanteRepository.saveAndFlush(estante);
+        return carregarCompleta(saved.getId());
     }
 
     @Transactional
-    public EstanteResponseDTO atualizarEstante(Long id, @Valid EstanteUpdateDTO updateDTO) {
+    public Estante atualizarEstante(Long id, EstanteUpdateCommand comando) {
         log.info("Atualizando estante: {}", id);
 
-        Estante estante = estanteRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + id));
+        Estante estante = carregarCompleta(id);
 
-        if (updateDTO.getPeriodo() != null) {
-            validarPeriodo(updateDTO.getPeriodo());
+        if (comando.periodo() != null) {
+            validarPeriodo(comando.periodo());
 
-            // Verificar se novo período não conflita com outra estante ativa do mesmo cliente
             if (estanteRepository.existsByPeriodoAndClienteIdAndAtivaTrue(
-                    updateDTO.getPeriodo(), estante.getCliente().getId()) &&
-                    !estante.getPeriodo().equals(updateDTO.getPeriodo())) {
+                    comando.periodo(), estante.getCliente().getId()) &&
+                    !estante.getPeriodo().equals(comando.periodo())) {
                 throw new EstanteJaExisteException(
-                        String.format("Já existe estante ativa no período %s para este cliente", updateDTO.getPeriodo()));
+                        String.format("Já existe estante ativa no período %s para este cliente", comando.periodo()));
             }
-            estante.setPeriodo(updateDTO.getPeriodo());
+            estante.setPeriodo(comando.periodo());
         }
 
-        if (updateDTO.getObservacao() != null) {
-            estante.setObservacao(updateDTO.getObservacao());
+        if (comando.observacao() != null) {
+            estante.setObservacao(comando.observacao());
         }
 
-        if (updateDTO.getAtiva() != null) {
-            if (!updateDTO.getAtiva() && temProdutosAssociados(estante)) {
+        if (comando.ativa() != null) {
+            if (!comando.ativa() && temProdutosAssociados(estante)) {
                 throw new EstanteComProdutosException(
                         "Não é possível desativar estante que possui produtos associados");
             }
-            estante.setAtiva(updateDTO.getAtiva());
+            estante.setAtiva(comando.ativa());
         }
 
-        if (updateDTO.getEmpresa() != null) {
-            estante.setEmpresa(updateDTO.getEmpresa());
+        if (comando.empresa() != null) {
+            estante.setEmpresa(comando.empresa());
         }
 
-        Estante updatedEstante = estanteRepository.save(estante);
-
-
-        return this.toResponseDTO(updatedEstante);
+        estanteRepository.save(estante);
+        return carregarCompleta(id);
     }
 
     @Transactional
     public void desativarEstante(Long id) {
         log.info("Desativando estante: {}", id);
 
-        Estante estante = estanteRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + id));
+        Estante estante = carregarCompleta(id);
 
         if (temProdutosAssociados(estante)) {
             throw new EstanteComProdutosException(
@@ -132,8 +118,7 @@ public class EstanteService {
     public void deletarEstante(Long id) {
         log.info("Deletando estante: {}", id);
 
-        Estante estante = estanteRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + id));
+        Estante estante = carregarCompleta(id);
 
         if (temProdutosAssociados(estante)) {
             throw new EstanteComProdutosException(
@@ -143,27 +128,24 @@ public class EstanteService {
         estanteRepository.delete(estante);
     }
 
-    // Consultas
-    public EstanteResponseDTO buscarEstantePorId(Long id) {
-        Estante estante = estanteRepository.findByIdWithProdutos(id)
-                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + id));
-        return this.toResponseDTO(estante);
+    public Estante buscarEstantePorId(Long id) {
+        return carregarCompleta(id);
     }
 
-    public Page<EstanteResponseDTO> listarEstantesPorCliente(Long clienteId, Pageable pageable) {
-        return estanteRepository.findByClienteIdAndAtivaTrue(clienteId, pageable)
-                .map(this::toResponseDTO);
+    public Page<Estante> listarEstantesPorCliente(Long clienteId, Pageable pageable) {
+        return estanteRepository.findByClienteIdAndAtivaTrue(clienteId, pageable);
     }
 
-    public List<EstanteResponseDTO> listarEstantesAtivasPorPeriodo(String periodo) {
+    public List<Estante> listarEstantesAtivasPorPeriodo(String periodo) {
         validarPeriodo(periodo);
-        return estanteRepository.findEstantesAtivasPorPeriodo(periodo)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+        return estanteRepository.findEstantesAtivasPorPeriodo(periodo);
     }
 
-    // Métodos utilitários
+    private Estante carregarCompleta(Long id) {
+        return estanteRepository.findByIdWithProdutos(id)
+                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + id));
+    }
+
     private void validarPeriodo(String periodo) {
         if (periodo == null || !periodo.matches("\\d{4}/\\d{2}")) {
             throw new PeriodoInvalidoException(
@@ -179,23 +161,5 @@ public class EstanteService {
 
     private boolean temProdutosAssociados(Estante estante) {
         return estante.getProdutos() != null && !estante.getProdutos().isEmpty();
-    }
-
-    private EstanteResponseDTO toResponseDTO(Estante estante) {
-        if (estante == null) return null;
-
-        int quantidadeProdutos = estante.getProdutos() != null ? estante.getProdutos().size() : 0;
-
-        return EstanteResponseDTO.builder()
-                .id(estante.getId())
-                .periodo(estante.getPeriodo())
-                .observacao(estante.getObservacao())
-                .clienteId(estante.getCliente().getId())
-                .clienteNome(estante.getCliente().getNome())
-                .clienteCnpj(estante.getCliente().getCnpj())
-                .ativa(estante.getAtiva())
-                .empresa(estante.getEmpresa())
-                .quantidadeProdutos(quantidadeProdutos)
-                .build();
     }
 }

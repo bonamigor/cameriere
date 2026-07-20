@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,31 +20,41 @@ public interface EstanteRepository extends JpaRepository<Estante, Long> {
 
     List<Estante> findByClienteId(Long clienteId);
 
-    Page<Estante> findByClienteIdAndAtivaTrue(Long clienteId, Pageable pageable);
-
     List<Estante> findByAtivaTrue();
 
-    // Buscas por período
-    @Query("SELECT e FROM Estante e WHERE e.periodo = :periodo AND e.ativa = true")
-    List<Estante> findEstantesAtivasPorPeriodo(@Param("periodo") String periodo);
-
-    @Query("SELECT e FROM Estante e WHERE e.periodo BETWEEN :inicio AND :fim")
-    List<Estante> findEstantesPorPeriodo(@Param("inicio") String inicio,
-                                         @Param("fim") String fim);
-
-    // Consultas com agregações
-    @Query("SELECT e.cliente.id, COUNT(e) FROM Estante e GROUP BY e.cliente.id")
-    List<Object[]> contarEstantesPorCliente();
-
-    @Query("SELECT e.periodo, COUNT(e) FROM Estante e WHERE e.ativa = true GROUP BY e.periodo")
-    List<Object[]> contarEstantesAtivasPorPeriodo();
-
-    // Busca com join fetch para evitar N+1
-    @Query("SELECT DISTINCT e FROM Estante e LEFT JOIN FETCH e.produtos WHERE e.id = :id")
+    // Busca com join fetch para evitar LazyInitializationException
+    @Query("""
+            SELECT DISTINCT e FROM Estante e
+            JOIN FETCH e.cliente
+            LEFT JOIN FETCH e.produtos
+            WHERE e.id = :id
+            """)
     Optional<Estante> findByIdWithProdutos(@Param("id") Long id);
 
     @Query("SELECT e FROM Estante e JOIN FETCH e.cliente WHERE e.id = :id")
     Optional<Estante> findByIdWithCliente(@Param("id") Long id);
+
+    @Query(
+            value = """
+                    SELECT DISTINCT e FROM Estante e
+                    JOIN FETCH e.cliente
+                    LEFT JOIN FETCH e.produtos
+                    WHERE e.cliente.id = :clienteId AND e.ativa = true
+                    """,
+            countQuery = """
+                    SELECT COUNT(e) FROM Estante e
+                    WHERE e.cliente.id = :clienteId AND e.ativa = true
+                    """
+    )
+    Page<Estante> findByClienteIdAndAtivaTrue(@Param("clienteId") Long clienteId, Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT e FROM Estante e
+            JOIN FETCH e.cliente
+            LEFT JOIN FETCH e.produtos
+            WHERE e.periodo = :periodo AND e.ativa = true
+            """)
+    List<Estante> findEstantesAtivasPorPeriodo(@Param("periodo") String periodo);
 
     // Operações de atualização em lote
     @Modifying

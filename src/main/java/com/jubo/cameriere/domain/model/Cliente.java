@@ -41,8 +41,10 @@ public class Cliente extends BaseEntity {
     @Size(max = 20, message = "Telefone não pode exceder 20 caracteres")
     private String telefone;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_id")
+    private Empresa empresa;
+
     private Boolean ativo = true;
 
-    @OneToOne(mappedBy = "cliente", cascade = CascadeType.ALL)
-    private Usuario usuario;
 }

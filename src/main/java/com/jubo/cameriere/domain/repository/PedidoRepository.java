@@ -5,6 +5,7 @@ import com.jubo.cameriere.domain.model.StatusPedido;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PedidoRepository extends JpaRepository<Pedido, Long> {
+public interface PedidoRepository extends JpaRepository<Pedido, Long>, JpaSpecificationExecutor<Pedido> {
     Page<Pedido> findByClienteId(Long clienteId, Pageable pageable);
 
     Page<Pedido> findByStatus(StatusPedido status, Pageable pageable);
@@ -26,7 +27,15 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     List<Pedido> findByStatus(StatusPedido status);
 
-    @Query("SELECT p FROM Pedido p LEFT JOIN FETCH p.itens i LEFT JOIN FETCH i.produto WHERE p.id = :id")
+    @Query("SELECT DISTINCT p FROM Pedido p " +
+            "LEFT JOIN FETCH p.itens i " +
+            "LEFT JOIN FETCH i.produto prod " +
+            "LEFT JOIN FETCH prod.unidadeMedida " +
+            "LEFT JOIN FETCH i.estanteProduto " +
+            "LEFT JOIN FETCH p.cliente c " +
+            "LEFT JOIN FETCH c.empresa " +
+            "LEFT JOIN FETCH p.empresaNota " +
+            "WHERE p.id = :id")
     Optional<Pedido> findByIdWithItens(@Param("id") Long id);
 
     @Query("SELECT p FROM Pedido p JOIN FETCH p.cliente WHERE p.id = :id")
@@ -34,6 +43,75 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @Query("SELECT DISTINCT p FROM Pedido p LEFT JOIN FETCH p.itens i LEFT JOIN FETCH i.produto WHERE p.cliente.id = :clienteId")
     List<Pedido> findByClienteIdWithItens(@Param("clienteId") Long clienteId);
+
+    // ===== FILTROS COMBINADOS =====
+
+    @Query("""
+            SELECT p FROM Pedido p
+            WHERE (:id IS NULL OR p.id = :id)
+              AND (:status IS NULL OR p.status = :status)
+              AND (:clienteId IS NULL OR p.cliente.id = :clienteId)
+              AND (:inicio IS NULL OR p.dataCriacao >= :inicio)
+              AND (:fim IS NULL OR p.dataCriacao <= :fim)
+            """)
+    Page<Pedido> findFiltrado(
+            @Param("id") Long id,
+            @Param("status") StatusPedido status,
+            @Param("clienteId") Long clienteId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(p), COALESCE(SUM(p.valorTotal), 0)
+            FROM Pedido p
+            WHERE (:id IS NULL OR p.id = :id)
+              AND (:status IS NULL OR p.status = :status)
+              AND (:clienteId IS NULL OR p.cliente.id = :clienteId)
+              AND (:inicio IS NULL OR p.dataCriacao >= :inicio)
+              AND (:fim IS NULL OR p.dataCriacao <= :fim)
+            """)
+    List<Object[]> resumirFiltrado(
+            @Param("id") Long id,
+            @Param("status") StatusPedido status,
+            @Param("clienteId") Long clienteId,
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim);
+
+    @Query("""
+            SELECT p.cliente.id, p.cliente.nome, COUNT(p), COALESCE(SUM(p.valorTotal), 0)
+            FROM Pedido p
+            WHERE (:inicio IS NULL OR p.dataCriacao >= :inicio)
+              AND (:fim IS NULL OR p.dataCriacao <= :fim)
+            GROUP BY p.cliente.id, p.cliente.nome
+            ORDER BY SUM(p.valorTotal) DESC
+            """)
+    List<Object[]> countPedidosByClienteNoPeriodo(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim);
+
+    @Query("""
+            SELECT i.produto.id,
+                   i.produto.nome,
+                   COALESCE(um.sigla, 'UN'),
+                   SUM(i.quantidade),
+                   COALESCE(SUM(i.precoTotal), 0),
+                   COUNT(DISTINCT p.id)
+            FROM ItemPedido i
+            JOIN i.pedido p
+            JOIN i.produto prod
+            LEFT JOIN prod.unidadeMedida um
+            WHERE p.status IN :statuses
+              AND p.dataConfirmacao IS NOT NULL
+              AND p.dataConfirmacao >= :inicio
+              AND p.dataConfirmacao <= :fim
+            GROUP BY i.produto.id, i.produto.nome, um.sigla
+            ORDER BY SUM(i.precoTotal) DESC
+            """)
+    List<Object[]> relatorioComprasPorProduto(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("statuses") List<StatusPedido> statuses);
 
     // ===== CONSULTAS AGREGADAS =====
 

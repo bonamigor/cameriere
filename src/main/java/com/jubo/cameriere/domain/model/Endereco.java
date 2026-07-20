@@ -14,6 +14,12 @@ public class Endereco {
     @Size(max = 255, message = "Logradouro não pode exceder 255 caracteres")
     private String logradouro;
 
+    @Size(max = 20, message = "Número não pode exceder 20 caracteres")
+    private String numero;
+
+    @Size(max = 255, message = "Bairro não pode exceder 255 caracteres")
+    private String bairro;
+
     @Pattern(regexp = "\\d{5}-\\d{3}", message = "CEP deve estar no formato XXXXX-XXX")
     @Size(max = 9)
     private String cep;

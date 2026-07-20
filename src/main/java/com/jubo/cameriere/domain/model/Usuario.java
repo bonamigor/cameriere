@@ -1,5 +1,6 @@
 package com.jubo.cameriere.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -25,10 +26,12 @@ public class Usuario extends BaseEntity {
     @NotBlank(message = "Email é obrigatório")
     @Email(message = "Email deve ser válido")
     @Size(max = 255, message = "Email não pode exceder 255 caracteres")
+    @Column(unique = true)
     private String email;
 
     @NotBlank(message = "Senha é obrigatória")
     @Size(min = 6, message = "Senha deve ter pelo menos 6 caracteres")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String senha;
 
     @NotNull(message = "Admin é obrigatório")

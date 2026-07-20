@@ -1,6 +1,5 @@
 package com.jubo.cameriere.domain.model;
 
-
 import lombok.*;
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -33,7 +32,12 @@ public class Estante {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
-    @OneToMany(mappedBy = "estante", cascade = CascadeType.ALL, orphanRemoval = true)
+    /**
+     * Relação inversa: EstanteProduto é persistido pelo seu próprio repositório.
+     * Sem cascade/orphanRemoval para evitar conflito ao recarregar com JOIN FETCH.
+     */
+    @OneToMany(mappedBy = "estante")
+    @Builder.Default
     private List<EstanteProduto> produtos = new ArrayList<>();
 
     public void adicionarProduto(EstanteProduto produto) {

@@ -1,57 +1,62 @@
 package com.jubo.cameriere.domain.service;
 
-import com.jubo.cameriere.api.exceptions.UnidadeMedidaNaoEncontradaException;
-import com.jubo.cameriere.api.exceptions.SiglaJaCadastradaException;
+import com.jubo.cameriere.domain.exception.SiglaJaCadastradaException;
+import com.jubo.cameriere.domain.exception.UnidadeMedidaNaoEncontradaException;
 import com.jubo.cameriere.domain.model.UnidadeMedida;
 import com.jubo.cameriere.domain.repository.UnidadeMedidaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UnidadeMedidaService {
 
     private final UnidadeMedidaRepository unidadeMedidaRepository;
 
-    public UnidadeMedidaService(UnidadeMedidaRepository unidadeMedidaRepository) {
-        this.unidadeMedidaRepository = unidadeMedidaRepository;
-    }
-
-    @Transactional(readOnly = true)
     public List<UnidadeMedida> listarTodasUnidadesMedida() {
         return unidadeMedidaRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public Optional<UnidadeMedida> buscarUnidadeMedidaPorId(Long id) {
-        return unidadeMedidaRepository.findById(id);
+    public UnidadeMedida buscarUnidadeMedidaPorId(Long id) {
+        return buscarOuFalhar(id);
     }
 
     @Transactional
-    public UnidadeMedida criarUnidadeMedida(UnidadeMedida unidadeMedida) {
-        if (unidadeMedidaRepository.existsBySigla(unidadeMedida.getSigla())) {
+    public UnidadeMedida criarUnidadeMedida(UnidadeMedida unidade) {
+        if (unidadeMedidaRepository.existsBySigla(unidade.getSigla())) {
             throw new SiglaJaCadastradaException("Sigla já cadastrada");
         }
-        return unidadeMedidaRepository.save(unidadeMedida);
+        return unidadeMedidaRepository.save(unidade);
     }
 
     @Transactional
-    public UnidadeMedida atualizarUnidadeMedida(UnidadeMedida unidadeMedida) {
-        if (!unidadeMedidaRepository.existsById(unidadeMedida.getId())) {
-            throw new UnidadeMedidaNaoEncontradaException("Unidade de medida não encontrada");
-        }
+    public UnidadeMedida atualizarUnidadeMedida(Long id, UnidadeMedida dados) {
+        UnidadeMedida unidade = buscarOuFalhar(id);
 
-        Optional<UnidadeMedida> unidadeExistente = unidadeMedidaRepository.findBySigla(unidadeMedida.getSigla());
-        if (unidadeExistente.isPresent() && !unidadeExistente.get().getId().equals(unidadeMedida.getId())) {
-            throw new SiglaJaCadastradaException("Sigla já cadastrada em outra unidade de medida");
-        }
+        unidadeMedidaRepository.findBySigla(dados.getSigla())
+                .filter(existente -> !existente.getId().equals(id))
+                .ifPresent(existente -> {
+                    throw new SiglaJaCadastradaException("Sigla já cadastrada em outra unidade de medida");
+                });
 
-        return unidadeMedidaRepository.save(unidadeMedida);
+        unidade.setSigla(dados.getSigla());
+        unidade.setDescricao(dados.getDescricao());
+        return unidadeMedidaRepository.save(unidade);
     }
 
     @Transactional
     public void deletarUnidadeMedida(Long id) {
-        unidadeMedidaRepository.deleteById(id);
+        UnidadeMedida unidade = buscarOuFalhar(id);
+        unidadeMedidaRepository.delete(unidade);
+    }
+
+    private UnidadeMedida buscarOuFalhar(Long id) {
+        return unidadeMedidaRepository.findById(id)
+                .orElseThrow(() -> new UnidadeMedidaNaoEncontradaException(
+                        "Unidade de medida não encontrada: " + id));
     }
 }

@@ -1,5 +1,5 @@
 package com.jubo.cameriere.domain.model;
-import com.jubo.cameriere.api.exceptions.PedidoStatusInvalidoException;
+import com.jubo.cameriere.domain.exception.PedidoStatusInvalidoException;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -12,6 +12,7 @@ import lombok.Setter;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,9 @@ public class Pedido extends BaseEntity {
 
     @Column(name = "data_confirmacao")
     private LocalDateTime dataConfirmacao;
+
+    @Column(name = "data_previsao_entrega")
+    private LocalDate dataPrevisaoEntrega;
 
     @Column(name = "data_cancelamento")
     private LocalDateTime dataCancelamento;
@@ -58,6 +62,10 @@ public class Pedido extends BaseEntity {
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empresa_nota_id")
+    private Empresa empresaNota;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemPedido> itens = new ArrayList<>();
 
@@ -68,12 +76,16 @@ public class Pedido extends BaseEntity {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public void confirmar() {
+    public void confirmar(LocalDate dataPrevisaoEntrega) {
         if (this.status != StatusPedido.PENDENTE) {
             throw new PedidoStatusInvalidoException("Pedido não pode ser confirmado no status: " + this.status);
         }
+        if (dataPrevisaoEntrega == null) {
+            throw new PedidoStatusInvalidoException("Data prevista de entrega é obrigatória para confirmar o pedido");
+        }
         this.status = StatusPedido.CONFIRMADO;
         this.dataConfirmacao = LocalDateTime.now();
+        this.dataPrevisaoEntrega = dataPrevisaoEntrega;
     }
 
     public void cancelar(String motivo) {

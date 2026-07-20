@@ -1,82 +1,123 @@
 package com.jubo.cameriere.domain.service;
 
-import com.jubo.cameriere.api.exceptions.UsuarioNaoEncontradoException;
-import com.jubo.cameriere.api.exceptions.EmailJaCadastradoException;
-import com.jubo.cameriere.api.exceptions.ClienteJaPossuiUsuarioException;
+import com.jubo.cameriere.domain.exception.ClienteJaPossuiUsuarioException;
+import com.jubo.cameriere.domain.exception.EmailJaCadastradoException;
+import com.jubo.cameriere.domain.exception.NegocioException;
+import com.jubo.cameriere.domain.exception.UsuarioNaoEncontradoException;
+import com.jubo.cameriere.domain.model.Cliente;
 import com.jubo.cameriere.domain.model.Usuario;
 import com.jubo.cameriere.domain.repository.UsuarioRepository;
+import com.jubo.cameriere.domain.service.comando.UsuarioCreateCommand;
+import com.jubo.cameriere.domain.service.comando.UsuarioUpdateCommand;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
+    private final ClienteService clienteService;
+    private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository) {
-        this.usuarioRepository = usuarioRepository;
-    }
-
-    @Transactional(readOnly = true)
     public List<Usuario> listarTodosUsuarios() {
-        return usuarioRepository.findAll();
+        return usuarioRepository.findAllWithCliente();
     }
 
-    @Transactional(readOnly = true)
-    public Optional<Usuario> buscarUsuarioPorId(Long id) {
-        return usuarioRepository.findById(id);
+    public Usuario buscarUsuarioPorId(Long id) {
+        return buscarOuFalhar(id);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<Usuario> buscarUsuarioPorClienteId(Long clienteId) {
-        return usuarioRepository.findByClienteId(clienteId);
+    public Usuario buscarUsuarioPorClienteId(Long clienteId) {
+        return usuarioRepository.findAllByClienteIdWithCliente(clienteId).stream()
+                .findFirst()
+                .orElseThrow(() -> new UsuarioNaoEncontradoException(
+                        "Usuário não encontrado para o cliente: " + clienteId));
     }
 
     @Transactional
-    public Usuario criarUsuario(Usuario usuario) {
-        // Verifica se email já existe
-        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+    public Usuario criarUsuario(UsuarioCreateCommand comando) {
+        if (usuarioRepository.existsByEmail(comando.email())) {
             throw new EmailJaCadastradoException("Email já cadastrado");
         }
 
-        // Verifica se cliente já possui usuário
-        if (usuario.getCliente() != null && usuario.getCliente().getId() != null) {
-            Optional<Usuario> usuarioExistente = usuarioRepository.findByClienteId(usuario.getCliente().getId());
-            if (usuarioExistente.isPresent()) {
-                throw new ClienteJaPossuiUsuarioException("Cliente já possui um usuário cadastrado");
-            }
-        }
+        validarRelacaoAdminCliente(Boolean.TRUE.equals(comando.admin()), comando.clienteId());
 
-        return usuarioRepository.save(usuario);
+        Usuario usuario = new Usuario();
+        usuario.setNome(comando.nome());
+        usuario.setEmail(comando.email());
+        usuario.setSenha(passwordEncoder.encode(comando.senha()));
+        usuario.setAdmin(comando.admin());
+        usuario.setCliente(resolverCliente(comando.clienteId(), null));
+
+        Usuario saved = usuarioRepository.save(usuario);
+        return buscarOuFalhar(saved.getId());
     }
 
     @Transactional
-    public Usuario atualizarUsuario(Usuario usuario) {
-        if (!usuarioRepository.existsById(usuario.getId())) {
-            throw new UsuarioNaoEncontradoException("Usuário não encontrado");
-        }
+    public Usuario atualizarUsuario(Long id, UsuarioUpdateCommand comando) {
+        Usuario usuario = buscarOuFalhar(id);
 
-        // Verifica se email já existe em outro usuário
-        Optional<Usuario> usuarioComEmail = usuarioRepository.findByEmail(usuario.getEmail());
-        if (usuarioComEmail.isPresent() && !usuarioComEmail.get().getId().equals(usuario.getId())) {
-            throw new EmailJaCadastradoException("Email já cadastrado em outro usuário");
-        }
+        usuarioRepository.findByEmail(comando.email())
+                .filter(existente -> !existente.getId().equals(id))
+                .ifPresent(existente -> {
+                    throw new EmailJaCadastradoException("Email já cadastrado em outro usuário");
+                });
 
-        // Verifica se cliente já possui usuário em outro registro
-        if (usuario.getCliente() != null && usuario.getCliente().getId() != null) {
-            Optional<Usuario> usuarioComCliente = usuarioRepository.findByClienteId(usuario.getCliente().getId());
-            if (usuarioComCliente.isPresent() && !usuarioComCliente.get().getId().equals(usuario.getId())) {
-                throw new ClienteJaPossuiUsuarioException("Cliente já possui um usuário cadastrado");
-            }
-        }
+        validarRelacaoAdminCliente(Boolean.TRUE.equals(comando.admin()), comando.clienteId());
 
-        return usuarioRepository.save(usuario);
+        usuario.setNome(comando.nome());
+        usuario.setEmail(comando.email());
+        usuario.setAdmin(comando.admin());
+        if (comando.senha() != null && !comando.senha().isBlank()) {
+            usuario.setSenha(passwordEncoder.encode(comando.senha()));
+        }
+        usuario.setCliente(resolverCliente(comando.clienteId(), id));
+
+        usuarioRepository.save(usuario);
+        return buscarOuFalhar(id);
+    }
+
+    private void validarRelacaoAdminCliente(boolean admin, Long clienteId) {
+        if (admin && clienteId != null) {
+            throw new NegocioException(
+                    "Usuários administradores não podem estar associados a um cliente");
+        }
+        if (!admin && clienteId == null) {
+            throw new NegocioException(
+                    "Operadores devem estar associados a um cliente");
+        }
     }
 
     @Transactional
     public void deletarUsuario(Long id) {
-        usuarioRepository.deleteById(id);
+        Usuario usuario = buscarOuFalhar(id);
+        usuarioRepository.delete(usuario);
+    }
+
+    private Usuario buscarOuFalhar(Long id) {
+        return usuarioRepository.findByIdWithCliente(id)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado: " + id));
+    }
+
+    private Cliente resolverCliente(Long clienteId, Long usuarioIdAtual) {
+        if (clienteId == null) {
+            return null;
+        }
+
+        Cliente cliente = clienteService.buscarOuFalhar(clienteId);
+        boolean clienteJaPossuiUsuario = usuarioIdAtual == null
+                ? usuarioRepository.existsByClienteId(clienteId)
+                : usuarioRepository.existsByClienteIdAndIdNot(clienteId, usuarioIdAtual);
+
+        if (clienteJaPossuiUsuario) {
+            throw new ClienteJaPossuiUsuarioException("Cliente já possui um usuário cadastrado");
+        }
+        return cliente;
     }
 }

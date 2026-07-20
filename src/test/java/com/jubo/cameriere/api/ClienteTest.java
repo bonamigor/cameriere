@@ -1,78 +1,62 @@
 package com.jubo.cameriere.api;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
-import io.restassured.path.json.JsonPath;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class ClienteTest {
-
-    @LocalServerPort
-    private int port;
-
-    @BeforeEach
-    public void setUp() {
-        RestAssured.port = port;
-        RestAssured.baseURI = "http://localhost";
-    }
+@DisplayName("API Clientes")
+class ClienteTest extends ApiAuthSupport {
 
     @Test
-    public void quandoCriarClienteComDadosValidos_deveRetornar201() {
-        String corpoRequisicao = """
-        {
-            "nome": "Empresa Teste LTDA",
-            "cnpj": "12.345.678/0001-90",
-            "email": "contato@empresa.com",
-            "telefone": "(11) 99999-9999",
-            "endereco": {
-                "logradouro": "Rua Exemplo, 123",
-                "cep": "12345-678",
-                "cidade": "São Paulo",
-                "estado": "SP"
-            }
-        }
-        """;
+    @DisplayName("Criar cliente com dados válidos retorna 201")
+    void quandoCriarClienteComDadosValidos_deveRetornar201() {
+        String cnpj = cnpjUnico();
 
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Teste LTDA",
+                            "cnpj": "%s",
+                            "email": "%s",
+                            "telefone": "(11) 99999-9999",
+                            "endereco": {
+                                "logradouro": "Rua Exemplo, 123",
+                                "cep": "12345-678",
+                                "cidade": "São Paulo",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpj, emailUnico("contato")))
                 .when()
                 .post("/api/clientes")
                 .then()
                 .statusCode(HttpStatus.CREATED.value())
                 .body("id", notNullValue())
-                .body("nome", equalTo("Empresa Teste LTDA"));
+                .body("nome", equalTo("Empresa Teste LTDA"))
+                .body("cnpj", equalTo(cnpj))
+                .header("Location", containsString("/api/clientes/"));
     }
 
     @Test
-    public void quandoCriarClienteComCNPJInvalido_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "nome": "Empresa Inválida",
-            "cnpj": "12345678901234",
-            "endereco": {
-                "cep": "12345-678",
-                "estado": "SP"
-            }
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar cliente com CNPJ inválido retorna 400")
+    void quandoCriarClienteComCNPJInvalido_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Inválida",
+                            "cnpj": "12345678901234",
+                            "endereco": {
+                                "cep": "12345-678",
+                                "estado": "SP"
+                            }
+                        }
+                        """)
                 .when()
                 .post("/api/clientes")
                 .then()
@@ -80,110 +64,95 @@ public class ClienteTest {
                 .body("status", equalTo(400))
                 .body("title", equalTo("Dados inválidos"))
                 .body("objects.size()", greaterThan(0))
-                .body("objects.find { it.name == 'cnpj' }.userMessage", equalTo("CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX"));
-
+                .body("objects.find { it.name == 'cnpj' }.userMessage",
+                        equalTo("CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX"));
     }
 
     @Test
-    public void quandoCriarClienteSemNome_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "cnpj": "12.345.678/0001-90",
-            "endereco": {
-                "estado": "SP"
-            }
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar cliente sem nome retorna 400")
+    void quandoCriarClienteSemNome_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "cnpj": "%s",
+                            "endereco": { "estado": "SP" }
+                        }
+                        """.formatted(cnpjUnico()))
                 .when()
                 .post("/api/clientes")
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .body("status", equalTo(400))
                 .body("title", equalTo("Dados inválidos"))
-                .body("objects.size()", greaterThan(0))
                 .body("objects.find { it.name == 'nome' }.userMessage", equalTo("Nome é obrigatório"));
     }
 
     @Test
-    public void quandoCriarClienteComCEPInvalido_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "nome": "Empresa Teste",
-            "cnpj": "12.345.678/0001-90",
-            "endereco": {
-                "cep": "12345678",
-                "estado": "SP"
-            }
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar cliente com CEP inválido retorna 400")
+    void quandoCriarClienteComCEPInvalido_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Teste",
+                            "cnpj": "%s",
+                            "endereco": {
+                                "cep": "12345678",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpjUnico()))
                 .when()
                 .post("/api/clientes")
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
-                .body("status", equalTo(400))
-                .body("title", equalTo("Dados inválidos"))
-                .body("objects.size()", greaterThan(0))
-                .body("objects.find { it.name == 'endereco.cep' }.userMessage", equalTo("CEP deve estar no formato XXXXX-XXX"));
+                .body("objects.find { it.name == 'endereco.cep' }.userMessage",
+                        equalTo("CEP deve estar no formato XXXXX-XXX"));
     }
 
     @Test
-    public void quandoCriarCliente_deveIncluirDatasDeCriacaoEAtualizacao() {
-        String corpoRequisicao = """
-    {
-        "nome": "Empresa Teste LTDA",
-        "cnpj": "12.345.679/0001-90",
-        "email": "contato@empresa.com",
-        "telefone": "(11) 99999-9999",
-        "endereco": {
-            "logradouro": "Rua Exemplo, 123",
-            "cep": "12345-678",
-            "cidade": "São Paulo",
-            "estado": "SP"
-        }
-    }
-    """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar cliente inclui datas de auditoria")
+    void quandoCriarCliente_deveIncluirDatasDeCriacaoEAtualizacao() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Auditoria",
+                            "cnpj": "%s",
+                            "email": "%s",
+                            "endereco": {
+                                "logradouro": "Rua Exemplo, 123",
+                                "cep": "12345-678",
+                                "cidade": "São Paulo",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpjUnico(), emailUnico("audit")))
                 .when()
                 .post("/api/clientes")
                 .then()
                 .statusCode(HttpStatus.CREATED.value())
-                .body("id", notNullValue())
                 .body("dataCriacao", notNullValue())
                 .body("dataAtualizacao", notNullValue());
     }
 
     @Test
-    public void quandoAtualizarCliente_deveAtualizarDataAtualizacao() {
-        // Primeiro cria um cliente
-        String corpoCriacao = """
-    {
-        "nome": "Empresa Para Atualizar",
-        "cnpj": "12.345.678/0001-91",
-        "email": "atualizar@empresa.com",
-        "endereco": {
-            "logradouro": "Rua Teste, 123",
-            "cep": "12345-678",
-            "cidade": "São Paulo",
-            "estado": "SP"
-        }
-    }
-    """;
+    @DisplayName("Atualizar cliente altera dataAtualizacao")
+    void quandoAtualizarCliente_deveAtualizarDataAtualizacao() throws InterruptedException {
+        String cnpj = cnpjUnico();
 
-
-        Response responseCriacao = given()
-                .contentType(ContentType.JSON)
-                .body(corpoCriacao)
+        Response responseCriacao = givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Para Atualizar",
+                            "cnpj": "%s",
+                            "email": "%s",
+                            "endereco": {
+                                "logradouro": "Rua Teste, 123",
+                                "cep": "12345-678",
+                                "cidade": "São Paulo",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpj, emailUnico("atualizar")))
                 .when()
                 .post("/api/clientes")
                 .then()
@@ -192,45 +161,48 @@ public class ClienteTest {
                 .response();
 
         Long id = responseCriacao.jsonPath().getLong("id");
-        LocalDateTime dataCriacaoOriginal = LocalDateTime.parse(responseCriacao.jsonPath().getString("dataCriacao").split("\\.")[0]);
+        LocalDateTime dataCriacaoOriginal = LocalDateTime.parse(
+                responseCriacao.jsonPath().getString("dataCriacao").split("\\.")[0]);
         String dataAtualizacaoOriginal = responseCriacao.jsonPath().getString("dataAtualizacao");
 
-        // Atualiza o cliente
-        String corpoAtualizacao = """
-    {
-        "id": %d,
-        "nome": "Empresa Atualizada",
-        "cnpj": "12.345.678/0001-91",
-        "email": "atualizado@empresa.com",
-        "endereco": {
-            "logradouro": "Rua Atualizada, 456",
-            "cep": "12345-678",
-            "cidade": "São Paulo",
-            "estado": "SP"
-        }
-    }
-    """.formatted(id);
+        Thread.sleep(1100);
 
-        Response responseAtualizacao = given()
-                .contentType(ContentType.JSON)
-                .body(corpoAtualizacao)
+        Response responseAtualizacao = givenAdmin()
+                .body("""
+                        {
+                            "nome": "Empresa Atualizada",
+                            "cnpj": "%s",
+                            "email": "%s",
+                            "endereco": {
+                                "logradouro": "Rua Atualizada, 456",
+                                "cep": "12345-678",
+                                "cidade": "São Paulo",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpj, emailUnico("atualizado")))
                 .when()
-                .put("/api/clientes")
+                .put("/api/clientes/{id}", id)
                 .then()
                 .statusCode(HttpStatus.OK.value())
                 .extract()
                 .response();
 
-        Long idResposta = responseAtualizacao.jsonPath().getLong("id");
-        LocalDateTime dataCriacaoResposta = LocalDateTime.parse(responseAtualizacao.jsonPath().getString("dataCriacao").split("\\.")[0]);
-        String dataAtualizacaoResposta = responseAtualizacao.jsonPath().getString("dataAtualizacao");
-        String nomeResposta = responseAtualizacao.jsonPath().getString("nome");
+        assertEquals(id, responseAtualizacao.jsonPath().getLong("id"));
+        assertEquals(dataCriacaoOriginal, LocalDateTime.parse(
+                responseAtualizacao.jsonPath().getString("dataCriacao").split("\\.")[0]));
+        assertNotNull(responseAtualizacao.jsonPath().getString("dataAtualizacao"));
+        assertNotEquals(dataAtualizacaoOriginal, responseAtualizacao.jsonPath().getString("dataAtualizacao"));
+        assertEquals("Empresa Atualizada", responseAtualizacao.jsonPath().getString("nome"));
+    }
 
-        // Validações
-        assertEquals(id.intValue(), idResposta.intValue());
-        assertEquals(dataCriacaoOriginal, dataCriacaoResposta); // Data criação deve ser igual
-        assertNotNull(dataAtualizacaoResposta); // Data atualização não pode ser nula
-        assertNotEquals(dataAtualizacaoOriginal, dataAtualizacaoResposta); // Deve ter mudado
-        assertEquals("Empresa Atualizada", nomeResposta);
+    @Test
+    @DisplayName("Buscar cliente inexistente retorna 404")
+    void quandoBuscarClienteInexistente_deveRetornar404() {
+        givenAdmin()
+                .when()
+                .get("/api/clientes/{id}", 999_999_999L)
+                .then()
+                .statusCode(HttpStatus.NOT_FOUND.value());
     }
 }

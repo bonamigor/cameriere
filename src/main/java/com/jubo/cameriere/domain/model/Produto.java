@@ -1,5 +1,6 @@
 package com.jubo.cameriere.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -39,5 +40,6 @@ public class Produto extends BaseEntity{
     private Boolean ativo = true;
 
     @OneToMany(mappedBy = "produto")
+    @JsonIgnore
     private List<EstanteProduto> estantes = new ArrayList<>();
 }

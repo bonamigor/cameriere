@@ -1,46 +1,45 @@
 package com.jubo.cameriere.api;
 
-import io.restassured.RestAssured;
-import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 
-import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class ProdutoTest {
+@DisplayName("API Produtos")
+class ProdutoTest extends ApiAuthSupport {
 
-    @LocalServerPort
-    private int port;
+    private String unidadeSigla;
 
     @BeforeEach
-    public void setUp() {
-        RestAssured.port = port;
-        RestAssured.baseURI = "http://localhost";
+    void prepararUnidadeMedida() {
+        unidadeSigla = siglaUnica();
+        givenAdmin()
+                .body("""
+                        {
+                            "sigla": "%s",
+                            "descricao": "Unidade teste"
+                        }
+                        """.formatted(unidadeSigla))
+                .when()
+                .post("/api/unidades-medida")
+                .then()
+                .statusCode(HttpStatus.CREATED.value());
     }
 
     @Test
-    public void quandoCriarProdutoComDadosValidos_deveRetornar201() {
-        String corpoRequisicao = """
-        {
-            "nome": "Notebook Dell Inspiron",
-            "precoCusto": 2500.50,
-            "unidadeMedida": {
-                "id": 1,
-                "sigla": "UN",
-                "descricao": "Unidade"
-            },
-            "ativo": true
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar produto válido retorna 201")
+    void quandoCriarProdutoComDadosValidos_deveRetornar201() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Notebook Dell Inspiron",
+                            "precoCusto": 2500.50,
+                            "unidadeMedidaSigla": "%s",
+                            "ativo": true
+                        }
+                        """.formatted(unidadeSigla))
                 .when()
                 .post("/api/produtos")
                 .then()
@@ -48,81 +47,73 @@ public class ProdutoTest {
                 .body("id", notNullValue())
                 .body("nome", equalTo("Notebook Dell Inspiron"))
                 .body("precoCusto", equalTo(2500.50f))
-                .body("ativo", equalTo(true));
+                .body("unidadeMedidaSigla", equalTo(unidadeSigla))
+                .body("ativo", equalTo(true))
+                .header("Location", containsString("/api/produtos/"));
     }
 
     @Test
-    public void quandoCriarProdutoSemUnidadeMedida_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "nome": "Produto Teste",
-            "precoCusto": 100.0
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar produto sem unidade de medida retorna 400")
+    void quandoCriarProdutoSemUnidadeMedida_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Produto Teste",
+                            "precoCusto": 100.0
+                        }
+                        """)
                 .when()
                 .post("/api/produtos")
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
-                .body("status", equalTo(400))
                 .body("title", equalTo("Dados inválidos"))
-                .body("objects.size()", greaterThan(0))
-                .body("objects.find { it.name == 'unidadeMedida' }.userMessage", equalTo("Unidade de medida é obrigatória"));
+                .body("objects.find { it.name == 'unidadeMedidaSigla' }.userMessage",
+                        equalTo("Sigla da unidade de medida é obrigatória"));
     }
 
     @Test
-    public void quandoCriarProdutoComPrecoCustoNegativo_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "nome": "Produto Inválido",
-            "precoCusto": -50.0,
-            "unidadeMedida": {
-                "id": 1,
-                "sigla": "UN",
-                "descricao": "Unidade"
-            }
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar produto com preço negativo retorna 400")
+    void quandoCriarProdutoComPrecoCustoNegativo_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "nome": "Produto Inválido",
+                            "precoCusto": -50.0,
+                            "unidadeMedidaSigla": "%s"
+                        }
+                        """.formatted(unidadeSigla))
                 .when()
                 .post("/api/produtos")
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
-                .body("status", equalTo(400))
-                .body("title", equalTo("Dados inválidos"))
-                .body("objects.size()", greaterThan(0))
-                .body("objects.find { it.name == 'precoCusto' }.userMessage", equalTo("Preço de custo deve ser maior que zero"));
+                .body("objects.find { it.name == 'precoCusto' }.userMessage",
+                        equalTo("Preço de custo deve ser maior que zero"));
     }
 
     @Test
-    public void quandoCriarProdutoSemNome_deveRetornar400() {
-        String corpoRequisicao = """
-        {
-            "precoCusto": 100.0,
-            "unidadeMedida": {
-                "id": 1,
-                "sigla": "UN",
-                "descricao": "Unidade"
-            }
-        }
-        """;
-
-        given()
-                .contentType(ContentType.JSON)
-                .body(corpoRequisicao)
+    @DisplayName("Criar produto sem nome retorna 400")
+    void quandoCriarProdutoSemNome_deveRetornar400() {
+        givenAdmin()
+                .body("""
+                        {
+                            "precoCusto": 100.0,
+                            "unidadeMedidaSigla": "%s"
+                        }
+                        """.formatted(unidadeSigla))
                 .when()
                 .post("/api/produtos")
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
-                .body("status", equalTo(400))
-                .body("title", equalTo("Dados inválidos"))
-                .body("objects.size()", greaterThan(0))
                 .body("objects.find { it.name == 'nome' }.userMessage", equalTo("Nome é obrigatório"));
+    }
+
+    @Test
+    @DisplayName("Listar produtos autenticado retorna 200")
+    void quandoListarProdutos_deveRetornar200() {
+        givenAdmin()
+                .when()
+                .get("/api/produtos")
+                .then()
+                .statusCode(HttpStatus.OK.value());
     }
 }

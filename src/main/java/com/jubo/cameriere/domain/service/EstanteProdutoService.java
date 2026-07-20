@@ -1,19 +1,16 @@
 package com.jubo.cameriere.domain.service;
 
-import com.jubo.cameriere.api.exceptions.*;
-import com.jubo.cameriere.domain.dto.EstanteProdutoRequestDTO;
-import com.jubo.cameriere.domain.dto.EstanteProdutoResponseDTO;
-import com.jubo.cameriere.domain.dto.EstanteProdutoUpdateDTO;
+import com.jubo.cameriere.domain.exception.*;
 import com.jubo.cameriere.domain.model.Estante;
 import com.jubo.cameriere.domain.model.EstanteProduto;
 import com.jubo.cameriere.domain.model.Produto;
 import com.jubo.cameriere.domain.repository.EstanteProdutoRepository;
 import com.jubo.cameriere.domain.repository.EstanteRepository;
 import com.jubo.cameriere.domain.repository.ProdutoRepository;
-import jakarta.validation.Valid;
+import com.jubo.cameriere.domain.service.comando.EstanteProdutoAssociateCommand;
+import com.jubo.cameriere.domain.service.comando.EstanteProdutoUpdateCommand;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,87 +30,83 @@ public class EstanteProdutoService {
     private final EstanteProdutoRepository estanteProdutoRepository;
     private final EstanteRepository estanteRepository;
     private final ProdutoRepository produtoRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
-    // CRUD Principal
     @Transactional
-    public EstanteProdutoResponseDTO associarProdutoEstante(@Valid EstanteProdutoRequestDTO request) {
-        log.info("Associando produto {} à estante {}", request.getProdutoId(), request.getEstanteId());
+    public EstanteProduto associarProdutoEstante(EstanteProdutoAssociateCommand comando) {
+        log.info("Associando produto {} à estante {}", comando.produtoId(), comando.estanteId());
 
-        // Validações
-        Estante estante = estanteRepository.findById(request.getEstanteId())
-                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + request.getEstanteId()));
+        Estante estante = estanteRepository.findById(comando.estanteId())
+                .orElseThrow(() -> new EntityNotFoundException("Estante não encontrada: " + comando.estanteId()));
 
         if (!estante.getAtiva()) {
             throw new EstanteInativaException("Não é possível associar produtos a uma estante inativa");
         }
 
-        Produto produto = produtoRepository.findById(request.getProdutoId())
-                .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado: " + request.getProdutoId()));
+        Produto produto = produtoRepository.findById(comando.produtoId())
+                .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado: " + comando.produtoId()));
 
         if (!produto.getAtivo()) {
             throw new ProdutoInativoException("Não é possível associar um produto inativo");
         }
 
-        // Verifica duplicidade
-        if (estanteProdutoRepository.existsByEstanteIdAndProdutoId(request.getEstanteId(), request.getProdutoId())) {
+        if (estanteProdutoRepository.existsByEstanteIdAndProdutoId(comando.estanteId(), comando.produtoId())) {
             throw new ProdutoJaAssociadoException(
                     String.format("Produto %d já está associado à estante %d",
-                            request.getProdutoId(), request.getEstanteId()));
+                            comando.produtoId(), comando.estanteId()));
         }
 
-        // Valida preço
-        if (request.getPrecoVenda().compareTo(BigDecimal.valueOf(produto.getPrecoCusto())) < 0) {
-            throw new PrecoVendaMenorQueCustoException(
-                    String.format("Preço de venda (R$ %.2f) não pode ser menor que o custo (R$ %.2f)",
-                            request.getPrecoVenda(), produto.getPrecoCusto()));
-        }
+        validarPrecoVendaNaoMenorQueCusto(comando.precoVenda(), produto.getPrecoCusto());
 
-        // Cria associação
         EstanteProduto estanteProduto = EstanteProduto.builder()
                 .estante(estante)
                 .produto(produto)
-                .precoVenda(request.getPrecoVenda())
+                .precoVenda(comando.precoVenda())
+                .quantidade(comando.quantidadeEstoque())
                 .ativo(true)
                 .build();
 
         EstanteProduto saved = estanteProdutoRepository.save(estanteProduto);
-
-        return toResponseDTO(saved);
+        return estanteProdutoRepository.findByIdWithAssociacoes(saved.getId()).orElse(saved);
     }
 
     @Transactional
-    public EstanteProdutoResponseDTO atualizarAssociacao(Long id, EstanteProdutoUpdateDTO updateDTO) {
+    public EstanteProduto atualizarAssociacao(Long id, EstanteProdutoUpdateCommand comando) {
         log.info("Atualizando associação ID: {}", id);
 
-        EstanteProduto estanteProduto = estanteProdutoRepository.findById(id)
+        EstanteProduto estanteProduto = estanteProdutoRepository.findByIdWithAssociacoes(id)
                 .orElseThrow(() -> new EntityNotFoundException("Associação não encontrada: " + id));
 
-        if (updateDTO.getPrecoVenda() != null) {
-            estanteProduto.setPrecoVenda(updateDTO.getPrecoVenda());
+        if (comando.precoVenda() != null) {
+            validarPrecoVendaNaoMenorQueCusto(
+                    comando.precoVenda(),
+                    estanteProduto.getProduto().getPrecoCusto());
+            estanteProduto.setPrecoVenda(comando.precoVenda());
         }
 
-        if (updateDTO.getAtivo() != null) {
-            estanteProduto.setAtivo(updateDTO.getAtivo());
+        if (comando.quantidadeEstoque() != null) {
+            estanteProduto.setQuantidade(comando.quantidadeEstoque());
         }
 
-        EstanteProduto updated = estanteProdutoRepository.save(estanteProduto);
+        if (comando.ativo() != null) {
+            estanteProduto.setAtivo(comando.ativo());
+        }
 
-        return toResponseDTO(updated);
+        estanteProdutoRepository.save(estanteProduto);
+        return estanteProdutoRepository.findByIdWithAssociacoes(id).orElse(estanteProduto);
     }
 
     @Transactional
-    public EstanteProdutoResponseDTO ajustarPreco(Long id, BigDecimal novoPreco, String motivo) {
+    public EstanteProduto ajustarPreco(Long id, BigDecimal novoPreco, String motivo) {
         log.info("Ajustando preço do produto {} para R$ {}", id, novoPreco);
 
-        EstanteProduto estanteProduto = estanteProdutoRepository.findById(id)
+        EstanteProduto estanteProduto = estanteProdutoRepository.findByIdWithAssociacoes(id)
                 .orElseThrow(() -> new EntityNotFoundException("Associação não encontrada: " + id));
 
-        BigDecimal precoAntigo = estanteProduto.getPrecoVenda();
+        Double precoCusto = estanteProduto.getProduto().getPrecoCusto();
+        validarPrecoVendaNaoMenorQueCusto(novoPreco, precoCusto);
 
-        // Validação de margem
-        BigDecimal margem = novoPreco.subtract(BigDecimal.valueOf(estanteProduto.getProduto().getPrecoCusto()))
-                .divide(BigDecimal.valueOf(estanteProduto.getProduto().getPrecoCusto()), 2, RoundingMode.HALF_UP);
+        BigDecimal margem = novoPreco.subtract(BigDecimal.valueOf(precoCusto))
+                .divide(BigDecimal.valueOf(precoCusto), 2, RoundingMode.HALF_UP);
 
         if (margem.compareTo(new BigDecimal("0.05")) < 0) {
             throw new MargemLucroInsuficienteException(
@@ -123,40 +116,27 @@ public class EstanteProdutoService {
 
         estanteProduto.setPrecoVenda(novoPreco);
         estanteProdutoRepository.save(estanteProduto);
-
-        return toResponseDTO(estanteProduto);
+        return estanteProdutoRepository.findByIdWithAssociacoes(id).orElse(estanteProduto);
     }
 
-    public EstanteProdutoResponseDTO buscarPorId(Long id) {
-        EstanteProduto estanteProduto = estanteProdutoRepository.findById(id)
+    public EstanteProduto buscarPorId(Long id) {
+        return estanteProdutoRepository.findByIdWithAssociacoes(id)
                 .orElseThrow(() -> new EntityNotFoundException("Associação não encontrada: " + id));
-        return toResponseDTO(estanteProduto);
     }
 
-    public Page<EstanteProdutoResponseDTO> listarPorEstante(Long estanteId, Pageable pageable) {
-        return estanteProdutoRepository.findByEstanteIdAndAtivoTrue(estanteId, pageable)
-                .map(this::toResponseDTO);
+    public Page<EstanteProduto> listarPorEstante(Long estanteId, Pageable pageable) {
+        return estanteProdutoRepository.findByEstanteIdAndAtivoTrue(estanteId, pageable);
     }
 
-    public List<EstanteProdutoResponseDTO> buscarProdutosDisponiveis(Long estanteId) {
-        return estanteProdutoRepository.findProdutosDisponiveisNaEstante(estanteId)
-                .stream()
-                .map(this::toResponseDTO)
-                .toList();
+    public List<EstanteProduto> buscarProdutosDisponiveis(Long estanteId) {
+        return estanteProdutoRepository.findProdutosDisponiveisNaEstante(estanteId);
     }
 
-    private EstanteProdutoResponseDTO toResponseDTO(EstanteProduto ep) {
-        return EstanteProdutoResponseDTO.builder()
-                .id(ep.getId())
-                .estanteId(ep.getEstante().getId())
-                .estantePeriodo(ep.getEstante().getPeriodo())
-                .produtoId(ep.getProduto().getId())
-                .produtoNome(ep.getProduto().getNome())
-                .precoVenda(ep.getPrecoVenda())
-                .ativo(ep.getAtivo())
-                .dataCadastro(ep.getDataCadastro())
-                .dataAtualizacao(ep.getDataAtualizacao())
-                .disponivel(ep.isDisponivel())
-                .build();
+    private void validarPrecoVendaNaoMenorQueCusto(BigDecimal precoVenda, Double precoCusto) {
+        if (precoVenda.compareTo(BigDecimal.valueOf(precoCusto)) < 0) {
+            throw new PrecoVendaMenorQueCustoException(
+                    String.format("Preço de venda (R$ %.2f) não pode ser menor que o custo (R$ %.2f)",
+                            precoVenda, precoCusto));
+        }
     }
 }

@@ -1,0 +1,1329 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Il Cameriere API",
+    "description": "API Il Cameriere com Spring Security + JWT.\n\n## Como usar\n1. Importe esta collection e o environment *Cameriere Local*.\n2. Execute **Auth > Login (Admin)** (ou Operador).\n3. O token vai para `{{accessToken}}` e as demais requests usam Bearer automaticamente.\n\n## Roles\n- **ADMIN**: acesso total (cadastros + relatórios).\n- **USER**: leitura + pedidos (sem criar/editar clientes, produtos, unidades, estantes, usuários).\n\n## Credenciais seed (profile dev)\n- admin@cafeteriacentral.com / 123456 (ADMIN)\n- operador@cafeteriacentral.com / 123456 (USER)\n\nSwagger: {{baseUrl}}/swagger-ui.html",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "role",
+      "value": ""
+    },
+    {
+      "key": "clienteId",
+      "value": "1"
+    },
+    {
+      "key": "usuarioId",
+      "value": "1"
+    },
+    {
+      "key": "usuarioCriadoId",
+      "value": ""
+    },
+    {
+      "key": "produtoId",
+      "value": "1"
+    },
+    {
+      "key": "unidadeMedidaId",
+      "value": "1"
+    },
+    {
+      "key": "estanteId",
+      "value": "1"
+    },
+    {
+      "key": "estanteProdutoId",
+      "value": "1"
+    },
+    {
+      "key": "pedidoId",
+      "value": "1"
+    },
+    {
+      "key": "inicioTimestamp",
+      "value": "1735689600000"
+    },
+    {
+      "key": "fimTimestamp",
+      "value": "1767225600000"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Login público (sem Bearer). Salva JWT em {{accessToken}}.",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@cafeteriacentral.com\",\n  \"senha\": \"123456\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Obtém JWT ADMIN e salva em {{accessToken}}. Execute antes dos demais requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "  pm.environment.set(\"accessToken\", json.accessToken);",
+                  "  if (json.usuarioId != null) pm.collectionVariables.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.usuarioId != null) pm.environment.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.clienteId != null) pm.collectionVariables.set(\"clienteId\", json.clienteId);",
+                  "  if (json.clienteId != null) pm.environment.set(\"clienteId\", json.clienteId);",
+                  "  if (json.role != null) pm.collectionVariables.set(\"role\", json.role);",
+                  "  if (json.role != null) pm.environment.set(\"role\", json.role);",
+                  "  console.log('Logado como', json.email, '(' + json.role + ')');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Operador USER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"operador@cafeteriacentral.com\",\n  \"senha\": \"123456\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Troca o token atual pelo JWT do USER."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "  pm.environment.set(\"accessToken\", json.accessToken);",
+                  "  if (json.usuarioId != null) pm.collectionVariables.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.usuarioId != null) pm.environment.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.clienteId != null) pm.collectionVariables.set(\"clienteId\", json.clienteId);",
+                  "  if (json.clienteId != null) pm.environment.set(\"clienteId\", json.clienteId);",
+                  "  if (json.role != null) pm.collectionVariables.set(\"role\", json.role);",
+                  "  if (json.role != null) pm.environment.set(\"role\", json.role);",
+                  "  console.log('Logado como', json.email, '(' + json.role + ')');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login senha inválida (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@cafeteriacentral.com\",\n  \"senha\": \"errada\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Acesso sem token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/clientes",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Deve retornar 401 Unauthorized."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Autorização (roles)",
+      "description": "Exemplos de 403. Faça Login (Operador USER) antes.",
+      "item": [
+        {
+          "name": "USER criar cliente (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/clientes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bloqueado\",\n  \"cnpj\": \"11.222.333/0001-81\",\n  \"endereco\": {\n    \"cep\": \"01310-100\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\"\n  }\n}"
+            },
+            "description": "USER não pode criar cliente → 403."
+          }
+        },
+        {
+          "name": "USER criar usuário (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Bloqueado\",\n  \"email\": \"bloqueado@teste.com\",\n  \"senha\": \"123456\",\n  \"admin\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "USER listar produtos (200)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/produtos",
+            "description": "USER pode listar produtos → 200."
+          }
+        },
+        {
+          "name": "USER relatório (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/relatorios/pedidos-por-cliente",
+            "description": "Relatórios exigem ADMIN → 403 para USER."
+          }
+        },
+        {
+          "name": "Restaurar Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@cafeteriacentral.com\",\n  \"senha\": \"123456\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Restaura token ADMIN para as próximas pastas da collection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "  pm.environment.set(\"accessToken\", json.accessToken);",
+                  "  if (json.usuarioId != null) pm.collectionVariables.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.usuarioId != null) pm.environment.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.clienteId != null) pm.collectionVariables.set(\"clienteId\", json.clienteId);",
+                  "  if (json.clienteId != null) pm.environment.set(\"clienteId\", json.clienteId);",
+                  "  if (json.role != null) pm.collectionVariables.set(\"role\", json.role);",
+                  "  if (json.role != null) pm.environment.set(\"role\", json.role);",
+                  "  console.log('Logado como', json.email, '(' + json.role + ')');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "description": "Escrita: ADMIN. Leitura: ADMIN e USER.",
+      "item": [
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/clientes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const clientes = pm.response.json();",
+                  "  if (Array.isArray(clientes) && clientes.length > 0) {",
+                  "    pm.collectionVariables.set(\"clienteId\", clientes[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar cliente por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}"
+          }
+        },
+        {
+          "name": "Criar cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/clientes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Padaria Nova Esperança\",\n  \"cnpj\": \"98.765.432/0001-10\",\n  \"email\": \"contato@padarianova.com\",\n  \"telefone\": \"(11) 98888-7777\",\n  \"ativo\": true,\n  \"endereco\": {\n    \"logradouro\": \"Av. Brasil, 500\",\n    \"cep\": \"01310-100\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\"\n  }\n}"
+            },
+            "description": "ADMIN only. Salva {{clienteId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"clienteId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Padaria Nova Esperança LTDA\",\n  \"cnpj\": \"98.765.432/0001-10\",\n  \"email\": \"financeiro@padarianova.com\",\n  \"telefone\": \"(11) 98888-7777\",\n  \"ativo\": true,\n  \"endereco\": {\n    \"logradouro\": \"Av. Brasil, 500\",\n    \"cep\": \"01310-100\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários",
+      "description": "Somente ADMIN. Regra: admin não pode ter clienteId; apenas operadores (admin=false) podem ser associados a um cliente.",
+      "item": [
+        {
+          "name": "Listar usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios"
+          }
+        },
+        {
+          "name": "Buscar usuário por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+          }
+        },
+        {
+          "name": "Buscar usuário por cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/cliente/{{clienteId}}"
+          }
+        },
+        {
+          "name": "Criar usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Maria Operadora\",\n  \"email\": \"maria+{{$timestamp}}@padarianova.com\",\n  \"senha\": \"senha123\",\n  \"admin\": false\n}"
+            },
+            "description": "Operador sem cliente. Para vincular a um cliente, informe clienteId (somente se admin=false)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"usuarioCriadoId\", pm.response.json().id);",
+                  "  pm.environment.set(\"usuarioCriadoId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar admin com cliente (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Admin Inválido\",\n  \"email\": \"admin.invalido+{{$timestamp}}@teste.com\",\n  \"senha\": \"senha123\",\n  \"admin\": true,\n  \"clienteId\": {{clienteId}}\n}"
+            },
+            "description": "Admin não pode ser associado a cliente → 400."
+          }
+        },
+        {
+          "name": "Atualizar usuário",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuarioCriadoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Maria Operadora Atualizada\",\n  \"email\": \"maria.atualizada+{{$timestamp}}@padarianova.com\",\n  \"senha\": \"senha456\",\n  \"admin\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar usuário",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuarios/{{usuarioCriadoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Unidades de Medida",
+      "description": "Escrita: ADMIN. Leitura: ADMIN e USER.",
+      "item": [
+        {
+          "name": "Listar unidades",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/unidades-medida"
+          }
+        },
+        {
+          "name": "Buscar unidade por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/unidades-medida/{{unidadeMedidaId}}"
+          }
+        },
+        {
+          "name": "Criar unidade",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/unidades-medida",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigla\": \"CX\",\n  \"descricao\": \"Caixa\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"unidadeMedidaId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar unidade",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/unidades-medida/{{unidadeMedidaId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigla\": \"CX\",\n  \"descricao\": \"Caixa com 12 unidades\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar unidade",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/unidades-medida/{{unidadeMedidaId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Produtos",
+      "description": "Escrita: ADMIN. Leitura: ADMIN e USER.",
+      "item": [
+        {
+          "name": "Listar produtos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/produtos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const items = pm.response.json();",
+                  "  if (Array.isArray(items) && items.length > 0) {",
+                  "    pm.collectionVariables.set(\"produtoId\", items[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar produto por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/produtos/{{produtoId}}"
+          }
+        },
+        {
+          "name": "Criar produto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/produtos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Leite Integral\",\n  \"precoCusto\": 4.50,\n  \"unidadeMedidaSigla\": \"L\",\n  \"ativo\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"produtoId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar produto",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/produtos/{{produtoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Leite Integral Premium\",\n  \"precoCusto\": 4.90,\n  \"unidadeMedidaSigla\": \"L\",\n  \"ativo\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Deletar produto",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/produtos/{{produtoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Estantes",
+      "description": "Escrita: ADMIN. Leitura: ADMIN e USER.",
+      "item": [
+        {
+          "name": "Listar estantes por cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estantes/cliente/{{clienteId}}?page=0&size=20&sort=periodo,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "estantes",
+                "cliente",
+                "{{clienteId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "periodo,desc"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const page = pm.response.json();",
+                  "  const content = page.content || page;",
+                  "  if (content.length > 0) pm.collectionVariables.set(\"estanteId\", content[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar estantes por período",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes/periodo/2026/01"
+          }
+        },
+        {
+          "name": "Buscar estante por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes/{{estanteId}}"
+          }
+        },
+        {
+          "name": "Criar estante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodo\": \"2026/02\",\n  \"observacao\": \"Estante de fevereiro\",\n  \"clienteId\": {{clienteId}},\n  \"ativa\": true,\n  \"empresa\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"estanteId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Atualizar estante",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes/{{estanteId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observacao\": \"Estante atualizada\",\n  \"ativa\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Desativar estante",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes/{{estanteId}}/desativar"
+          }
+        },
+        {
+          "name": "Deletar estante",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes/{{estanteId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Estante x Produto",
+      "description": "Escrita: ADMIN. Preço de venda não pode ser menor que o custo do produto.",
+      "item": [
+        {
+          "name": "Listar produtos da estante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estantes-produtos/estante/{{estanteId}}?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "estantes-produtos",
+                "estante",
+                "{{estanteId}}"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const page = pm.response.json();",
+                  "  if (page.content && page.content.length > 0) {",
+                  "    pm.collectionVariables.set(\"estanteProdutoId\", page.content[0].id);",
+                  "    pm.collectionVariables.set(\"produtoId\", page.content[0].produtoId);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar produtos disponíveis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes-produtos/estante/{{estanteId}}/disponiveis"
+          }
+        },
+        {
+          "name": "Buscar associação por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes-produtos/{{estanteProdutoId}}"
+          }
+        },
+        {
+          "name": "Associar produto à estante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes-produtos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estanteId\": {{estanteId}},\n  \"produtoId\": {{produtoId}},\n  \"precoVenda\": 9.90,\n  \"quantidadeEstoque\": 50\n}"
+            },
+            "description": "precoVenda deve ser >= precoCusto do produto."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"estanteProdutoId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Associar com preço < custo (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes-produtos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estanteId\": {{estanteId}},\n  \"produtoId\": {{produtoId}},\n  \"precoVenda\": 0.01,\n  \"quantidadeEstoque\": 10\n}"
+            },
+            "description": "Deve retornar 400 Violação de regra de negócio."
+          }
+        },
+        {
+          "name": "Atualizar associação",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes-produtos/{{estanteProdutoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precoVenda\": 10.50,\n  \"quantidadeEstoque\": 80,\n  \"ativo\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Atualizar com preço < custo (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/estantes-produtos/{{estanteProdutoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precoVenda\": 0.01\n}"
+            },
+            "description": "Mesma regra do create: preço >= custo."
+          }
+        },
+        {
+          "name": "Ajustar preço",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/estantes-produtos/{{estanteProdutoId}}/preco?novoPreco=11.90&motivo=Reajuste sazonal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "estantes-produtos",
+                "{{estanteProdutoId}}",
+                "preco"
+              ],
+              "query": [
+                {
+                  "key": "novoPreco",
+                  "value": "11.90"
+                },
+                {
+                  "key": "motivo",
+                  "value": "Reajuste sazonal"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desativar associação",
+          "description": "Exemplo destrutivo. Usa um ID inexistente para não afetar o fluxo de pedidos quando a collection é executada inteira.",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes-produtos/999999999"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "description": "ADMIN e USER. Relatórios: somente ADMIN.",
+      "item": [
+        {
+          "name": "Listar pedidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos?page=0&size=20&sort=dataCriacao,desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "dataCriacao,desc"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "clienteId",
+                  "value": "{{clienteId}}",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar pedidos por cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/cliente/{{clienteId}}"
+          }
+        },
+        {
+          "name": "Listar pedidos por status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/status/PENDENTE"
+          }
+        },
+        {
+          "name": "Criar pedido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"observacao\": \"Pedido de teste via Postman\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"estanteId\": {{estanteId}},\n      \"quantidade\": 2,\n      \"observacao\": \"Sem açúcar\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set(\"pedidoId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar pedido por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}"
+          }
+        },
+        {
+          "name": "Confirmar pedido",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/confirmar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataPrevisaoEntrega\": \"2026-07-20\"\n}"
+            },
+            "description": "Confirma o pedido e define a data prevista de entrega (pode diferir da data real de entrega)."
+          }
+        },
+        {
+          "name": "Entregar pedido",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/entregar"
+          }
+        },
+        {
+          "name": "Cancelar pedido",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/cancelar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Cliente desistiu da compra\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Relatório valor total no período",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/relatorios/valor-total-periodo?inicioTimestamp={{inicioTimestamp}}&fimTimestamp={{fimTimestamp}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "relatorios",
+                "valor-total-periodo"
+              ],
+              "query": [
+                {
+                  "key": "inicioTimestamp",
+                  "value": "{{inicioTimestamp}}"
+                },
+                {
+                  "key": "fimTimestamp",
+                  "value": "{{fimTimestamp}}"
+                }
+              ]
+            },
+            "description": "ADMIN only."
+          }
+        },
+        {
+          "name": "Relatório pedidos por cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/pedidos/relatorios/pedidos-por-cliente",
+            "description": "ADMIN only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fluxo completo (seed)",
+      "description": "Ordem: 00 → 05. Requer API com seed (profile dev) e MySQL.",
+      "item": [
+        {
+          "name": "00 - Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@cafeteriacentral.com\",\n  \"senha\": \"123456\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set(\"accessToken\", json.accessToken);",
+                  "  if (json.usuarioId != null) pm.collectionVariables.set(\"usuarioId\", json.usuarioId);",
+                  "  if (json.clienteId != null) pm.collectionVariables.set(\"clienteId\", json.clienteId);",
+                  "  if (json.role != null) pm.collectionVariables.set(\"role\", json.role);",
+                  "  console.log('Logado como', json.email, '(' + json.role + ')');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "01 - Capturar IDs do seed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/clientes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const clientes = pm.response.json();",
+                  "pm.test(\"Há clientes\", () => pm.expect(clientes.length).to.be.above(0));",
+                  "pm.collectionVariables.set(\"clienteId\", clientes[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Capturar estante do cliente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes/cliente/{{clienteId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const page = pm.response.json();",
+                  "pm.test(\"Há estantes\", () => pm.expect(page.content.length).to.be.above(0));",
+                  "pm.collectionVariables.set(\"estanteId\", page.content[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Capturar produto disponível",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/estantes-produtos/estante/{{estanteId}}/disponiveis"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const produtos = pm.response.json();",
+                  "pm.test(\"Há produtos disponíveis\", () => pm.expect(produtos.length).to.be.above(0));",
+                  "pm.collectionVariables.set(\"produtoId\", produtos[0].produtoId);",
+                  "pm.collectionVariables.set(\"estanteProdutoId\", produtos[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Criar pedido com seed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"observacao\": \"Fluxo Postman seed\",\n  \"itens\": [\n    {\n      \"produtoId\": {{produtoId}},\n      \"estanteId\": {{estanteId}},\n      \"quantidade\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Pedido criado\", () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set(\"pedidoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Confirmar pedido seed",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}/confirmar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataPrevisaoEntrega\": \"2026-07-25\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

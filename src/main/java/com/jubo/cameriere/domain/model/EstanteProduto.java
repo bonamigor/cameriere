@@ -1,7 +1,7 @@
 package com.jubo.cameriere.domain.model;
 
 
-import com.jubo.cameriere.api.exceptions.EstoqueInsuficienteException;
+import com.jubo.cameriere.domain.exception.EstoqueInsuficienteException;
 import lombok.*;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -60,7 +60,30 @@ public class EstanteProduto {
     }
 
     public boolean isDisponivel() {
-        return ativo && quantidade > 0;
+        return Boolean.TRUE.equals(ativo) && quantidade != null && quantidade > 0;
+    }
+
+    public boolean possuiEstoqueSuficiente(BigDecimal quantidadeSolicitada) {
+        if (quantidadeSolicitada == null || quantidade == null) {
+            return false;
+        }
+        return BigDecimal.valueOf(quantidade).compareTo(quantidadeSolicitada) >= 0;
+    }
+
+    public void baixarEstoque(BigDecimal quantidadeSolicitada) {
+        if (!possuiEstoqueSuficiente(quantidadeSolicitada)) {
+            throw new EstoqueInsuficienteException(
+                    String.format("Estoque insuficiente para o produto %s. Disponível: %d",
+                            produto != null ? produto.getNome() : id, quantidade));
+        }
+        this.quantidade = this.quantidade - quantidadeSolicitada.intValue();
+    }
+
+    public void reporEstoque(BigDecimal quantidadeReposta) {
+        if (quantidadeReposta == null) {
+            return;
+        }
+        this.quantidade = this.quantidade + quantidadeReposta.intValue();
     }
 
     public BigDecimal calcularValorTotal(Integer quantidade) {
@@ -72,7 +95,7 @@ public class EstanteProduto {
     }
 
     public void desativar() {
-        if (this.quantidade > 0) {
+        if (this.quantidade != null && this.quantidade > 0) {
             throw new IllegalStateException("Não é possível desativar produto com estoque positivo");
         }
         this.ativo = false;
