@@ -16,7 +16,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("API Segurança: bloqueio de login, 2FA e auditoria")
+@DisplayName("API Segurança: bloqueio de login, 2FA, auditoria e health")
 class SegurancaTest extends ApiAuthSupport {
 
     private static final String SENHA = "Senha@2026";
@@ -120,6 +120,15 @@ class SegurancaTest extends ApiAuthSupport {
                 .then().statusCode(200)
                 .body("content[0].metodo", equalTo("POST"))
                 .body("content[0].recurso", equalTo("/api/unidades-medida"));
+    }
+
+    @Test
+    @DisplayName("Health check responde sem autenticação e sem detalhes internos")
+    void quandoConsultarHealth_deveResponderUp() {
+        givenSemAuth().when().get("/actuator/health")
+                .then().statusCode(200)
+                .body("status", equalTo("UP"))
+                .body("components", nullValue());
     }
 
     private Usuario criarUsuario(boolean admin) {

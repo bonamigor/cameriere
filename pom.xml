@@ -46,6 +46,10 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
 			<!-- Base32 dos segredos TOTP (2FA) -->
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
