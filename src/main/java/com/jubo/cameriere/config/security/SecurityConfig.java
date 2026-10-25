@@ -34,7 +34,7 @@ import java.time.OffsetDateTime;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AuthCookieProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -126,7 +126,7 @@ public class SecurityConfig {
                     .type(ProblemType.NAO_AUTENTICADO.getUri())
                     .title(ProblemType.NAO_AUTENTICADO.getTitle())
                     .detail("É necessário autenticar-se para acessar este recurso.")
-                    .userMessage("Faça login e envie o token Bearer no header Authorization.")
+                    .userMessage("Sua sessão expirou ou é inválida. Faça login novamente.")
                     .build();
             objectMapper.writeValue(response.getOutputStream(), problem);
         };

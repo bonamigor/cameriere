@@ -13,7 +13,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${cameriere.cors.allowed-origins:*}")
+    @Value("${cameriere.cors.allowed-origins}")
     private String allowedOrigins;
 
     @Bean
@@ -24,7 +24,12 @@ public class CorsConfig {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-        config.setAllowedOriginPatterns(origins);
+        // Com credenciais, curinga permitiria que qualquer site fizesse requisições autenticadas
+        if (origins.isEmpty() || origins.stream().anyMatch(o -> o.contains("*"))) {
+            throw new IllegalStateException(
+                    "CORS_ALLOWED_ORIGINS deve listar origens explícitas (sem '*'), separadas por vírgula");
+        }
+        config.setAllowedOrigins(origins);
         config.setAllowedHeaders(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setMaxAge(3600L);

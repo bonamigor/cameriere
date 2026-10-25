@@ -19,7 +19,7 @@ class UsuarioTest extends ApiAuthSupport {
                         {
                             "nome": "João Silva",
                             "email": "%s",
-                            "senha": "123456",
+                            "senha": "Senha@2026",
                             "admin": false
                         }
                         """.formatted(email))
@@ -43,7 +43,7 @@ class UsuarioTest extends ApiAuthSupport {
                         {
                             "nome": "João Silva",
                             "email": "email-invalido",
-                            "senha": "123456",
+                            "senha": "Senha@2026",
                             "admin": false
                         }
                         """)
@@ -72,7 +72,7 @@ class UsuarioTest extends ApiAuthSupport {
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .body("objects.find { it.name == 'senha' }.userMessage",
-                        equalTo("Senha deve ter pelo menos 6 caracteres"));
+                        equalTo("Senha deve ter entre 8 e 72 caracteres"));
     }
 
     @Test
@@ -82,7 +82,7 @@ class UsuarioTest extends ApiAuthSupport {
                 .body("""
                         {
                             "email": "%s",
-                            "senha": "123456",
+                            "senha": "Senha@2026",
                             "admin": false
                         }
                         """.formatted(emailUnico("semnome")))
@@ -101,7 +101,7 @@ class UsuarioTest extends ApiAuthSupport {
                         {
                             "nome": "João Silva",
                             "email": "%s",
-                            "senha": "123456"
+                            "senha": "Senha@2026"
                         }
                         """.formatted(emailUnico("semadmin")))
                 .when()
