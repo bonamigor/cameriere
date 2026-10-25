@@ -41,6 +41,7 @@ public class UsuarioAssembler {
                 usuario.getAdmin(),
                 cliente != null ? cliente.getId() : null,
                 cliente != null ? cliente.getNome() : null,
+                usuario.isTotpAtivo(),
                 usuario.getDataCriacao(),
                 usuario.getDataAtualizacao()
         );

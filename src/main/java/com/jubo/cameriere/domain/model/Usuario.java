@@ -12,7 +12,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Usuario extends BaseEntity {
 
     @Id
@@ -41,4 +40,24 @@ public class Usuario extends BaseEntity {
     @OneToOne
     @JoinColumn(name = "cliente_id")
     private Cliente cliente;
+
+    /** Segredo TOTP criptografado; preenchido ao iniciar a configuração do 2FA. */
+    @Column(name = "totp_segredo")
+    private String totpSegredo;
+
+    @Column(name = "totp_ativo", nullable = false)
+    private boolean totpAtivo = false;
+
+    /** Último passo de 30s aceito, para impedir a reutilização do mesmo código. */
+    @Column(name = "totp_ultimo_passo")
+    private Long totpUltimoPasso;
+
+    public Usuario(Long id, String nome, String email, String senha, Boolean admin, Cliente cliente) {
+        this.id = id;
+        this.nome = nome;
+        this.email = email;
+        this.senha = senha;
+        this.admin = admin;
+        this.cliente = cliente;
+    }
 }

@@ -31,6 +31,50 @@ class AuthTest extends ApiAuthSupport {
     }
 
     @Test
+    @DisplayName("Login define cookie HttpOnly que autentica as requisições seguintes")
+    void quandoLoginValido_deveDefinirCookieHttpOnly() {
+        String setCookie = givenSemAuth()
+                .body("""
+                        {
+                          "email": "%s",
+                          "senha": "%s"
+                        }
+                        """.formatted(ADMIN_EMAIL, SENHA_PADRAO))
+                .when()
+                .post("/api/auth/login")
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .header("Set-Cookie", allOf(
+                        startsWith("cameriere_token="),
+                        containsString("HttpOnly"),
+                        containsString("SameSite=Lax")))
+                .extract()
+                .header("Set-Cookie");
+
+        String token = setCookie.substring("cameriere_token=".length(), setCookie.indexOf(';'));
+
+        givenSemAuth()
+                .cookie("cameriere_token", token)
+                .when()
+                .get("/api/clientes")
+                .then()
+                .statusCode(HttpStatus.OK.value());
+    }
+
+    @Test
+    @DisplayName("Logout expira o cookie de autenticação")
+    void quandoLogout_deveExpirarCookie() {
+        givenSemAuth()
+                .when()
+                .post("/api/auth/logout")
+                .then()
+                .statusCode(HttpStatus.NO_CONTENT.value())
+                .header("Set-Cookie", allOf(
+                        startsWith("cameriere_token=;"),
+                        containsString("Max-Age=0")));
+    }
+
+    @Test
     @DisplayName("Login com senha inválida retorna 401")
     void quandoLoginComSenhaInvalida_deveRetornar401() {
         givenSemAuth()
@@ -92,7 +136,7 @@ class AuthTest extends ApiAuthSupport {
                         {
                           "nome": "Novo User",
                           "email": "%s",
-                          "senha": "123456",
+                          "senha": "Senha@2026",
                           "admin": false
                         }
                         """.formatted(emailUnico("bloqueado")))

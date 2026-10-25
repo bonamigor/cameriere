@@ -8,6 +8,7 @@ public record LoginResponseDTO(
         String nome,
         String email,
         String role,
-        Long clienteId
+        Long clienteId,
+        boolean doisFatoresAtivo
 ) {
 }

@@ -67,6 +67,7 @@ public class UsuarioTest {
         usuario.setNome("João Silva");
         usuario.setEmail("joao@email.com");
         usuario.setSenha("123456");
+        usuario.setAdmin(null);
 
         Set<String> mensagensErro = validator.validate(usuario).stream()
                 .map(ConstraintViolation::getMessage)

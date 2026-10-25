@@ -2,6 +2,7 @@ package com.jubo.cameriere.domain.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -34,6 +35,7 @@ public class Produto extends BaseEntity{
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unidade_medida", referencedColumnName = "sigla")
     @NotNull(message = "Unidade de medida é obrigatória")
+    @Valid
     private UnidadeMedida unidadeMedida;
 
     @Column(name = "ativo")

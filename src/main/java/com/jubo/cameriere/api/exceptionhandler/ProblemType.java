@@ -13,6 +13,7 @@ public enum ProblemType {
     ENTIDADE_EM_USO("/entidade-em-uso", "Entidade em uso"),
     ACESSO_NEGADO("/acesso-negado", "Acesso negado"),
     NAO_AUTENTICADO("/nao-autenticado", "Não autenticado"),
+    MFA_OBRIGATORIO("/mfa-obrigatorio", "Verificação em duas etapas obrigatória"),
     ERRO_NEGOCIO("/erro-negocio", "Violação de regra de negócio");
 
     private String title;

@@ -34,7 +34,7 @@ import java.time.OffsetDateTime;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AuthCookieProperties.class, MfaProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -53,7 +53,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/login",
+                                "/api/auth/login/2fa",
+                                "/api/auth/logout",
+                                "/actuator/health",
+                                "/actuator/health/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",
@@ -61,6 +65,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
+                        .requestMatchers("/api/auditoria/**").hasRole("ADMIN")
                         .requestMatchers("/api/pedidos/relatorios/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.POST, "/api/empresas/**").hasRole("ADMIN")
@@ -126,7 +131,7 @@ public class SecurityConfig {
                     .type(ProblemType.NAO_AUTENTICADO.getUri())
                     .title(ProblemType.NAO_AUTENTICADO.getTitle())
                     .detail("É necessário autenticar-se para acessar este recurso.")
-                    .userMessage("Faça login e envie o token Bearer no header Authorization.")
+                    .userMessage("Sua sessão expirou ou é inválida. Faça login novamente.")
                     .build();
             objectMapper.writeValue(response.getOutputStream(), problem);
         };
