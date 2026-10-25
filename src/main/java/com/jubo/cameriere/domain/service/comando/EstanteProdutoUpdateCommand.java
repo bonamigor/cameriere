@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 public record EstanteProdutoUpdateCommand(
         BigDecimal precoVenda,
-        Integer quantidadeEstoque,
+        BigDecimal quantidadeEstoque,
         Boolean ativo
 ) {
 }

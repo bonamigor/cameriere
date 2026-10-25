@@ -26,9 +26,9 @@ public class EstanteProdutoRequestDTO {
     private BigDecimal precoVenda;
 
     @NotNull(message = "Quantidade em estoque é obrigatória")
-    @Min(value = 0, message = "Quantidade em estoque não pode ser negativa")
-    @Max(value = 999999, message = "Quantidade em estoque excede o limite")
-    private Integer quantidadeEstoque;
+    @DecimalMin(value = "0", message = "Quantidade em estoque não pode ser negativa")
+    @Digits(integer = 9, fraction = 3, message = "Quantidade em estoque aceita até 3 casas decimais")
+    private BigDecimal quantidadeEstoque;
 
     @Min(value = 0, message = "Estoque mínimo não pode ser negativo")
     private Integer estoqueMinimo;

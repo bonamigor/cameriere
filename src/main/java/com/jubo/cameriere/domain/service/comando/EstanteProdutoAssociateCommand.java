@@ -6,6 +6,6 @@ public record EstanteProdutoAssociateCommand(
         Long estanteId,
         Long produtoId,
         BigDecimal precoVenda,
-        Integer quantidadeEstoque
+        BigDecimal quantidadeEstoque
 ) {
 }

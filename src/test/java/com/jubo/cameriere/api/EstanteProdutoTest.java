@@ -12,10 +12,12 @@ class EstanteProdutoTest extends ApiAuthSupport {
 
     private Long estanteId;
     private Long produtoId;
+    private String sigla;
+    private Long clienteId;
 
     @BeforeEach
     void prepararDados() {
-        Number clienteId = givenAdmin()
+        Number clienteIdNum = givenAdmin()
                 .body("""
                         {
                           "nome": "Cliente Estante Teste",
@@ -30,6 +32,7 @@ class EstanteProdutoTest extends ApiAuthSupport {
                 .statusCode(HttpStatus.CREATED.value())
                 .extract()
                 .path("id");
+        clienteId = clienteIdNum.longValue();
 
         String periodo = "20%02d/%02d".formatted(
                 (Math.abs(clienteId.intValue()) % 80) + 20,
@@ -44,7 +47,7 @@ class EstanteProdutoTest extends ApiAuthSupport {
                           "ativa": true,
                           "empresa": 1
                         }
-                        """.formatted(periodo, clienteId.longValue()))
+                        """.formatted(periodo, clienteId))
                 .when()
                 .post("/api/estantes")
                 .then()
@@ -53,7 +56,7 @@ class EstanteProdutoTest extends ApiAuthSupport {
                 .path("id");
         estanteId = estanteIdNum.longValue();
 
-        String sigla = siglaUnica();
+        sigla = siglaUnica();
         givenAdmin()
                 .body("""
                         { "sigla": "%s", "descricao": "Unidade EP" }
@@ -100,6 +103,115 @@ class EstanteProdutoTest extends ApiAuthSupport {
                 .body("id", notNullValue())
                 .body("precoVenda", equalTo(15.0f))
                 .body("quantidade", equalTo(50));
+    }
+
+    @Test
+    @DisplayName("Itens disponíveis da estante trazem a unidade de medida do produto")
+    void quandoListarDisponiveis_deveIncluirUnidadeDeMedida() {
+        givenAdmin()
+                .body("""
+                        {
+                          "estanteId": %d,
+                          "produtoId": %d,
+                          "precoVenda": 15.00,
+                          "quantidadeEstoque": 50
+                        }
+                        """.formatted(estanteId, produtoId))
+                .when()
+                .post("/api/estantes-produtos")
+                .then()
+                .statusCode(HttpStatus.CREATED.value());
+
+        givenUser()
+                .when()
+                .get("/api/estantes-produtos/estante/{id}/disponiveis", estanteId)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("$", hasSize(1))
+                .body("[0].produtoId", equalTo(produtoId.intValue()))
+                .body("[0].unidadeMedidaSigla", equalTo(sigla))
+                .body("[0].unidadeMedidaDescricao", equalTo("Unidade EP"))
+                .body("[0].quantidade", equalTo(50));
+    }
+
+    @Test
+    @DisplayName("Pedido fracionado confirmado baixa o saldo exato e o cancelamento o repõe")
+    void quandoConfirmarECancelarPedidoFracionado_deveAjustarSaldoExato() {
+        associar("100");
+
+        Number pedidoId = givenAdmin()
+                .body("""
+                        {
+                          "clienteId": %d,
+                          "itens": [ { "produtoId": %d, "estanteId": %d, "quantidade": 35.5 } ]
+                        }
+                        """.formatted(clienteId, produtoId, estanteId))
+                .when()
+                .post("/api/pedidos")
+                .then()
+                .statusCode(HttpStatus.CREATED.value())
+                .extract()
+                .path("id");
+
+        givenAdmin()
+                .body("{ \"dataPrevisaoEntrega\": \"%s\" }".formatted(java.time.LocalDate.now().plusDays(2)))
+                .when()
+                .put("/api/pedidos/{id}/confirmar", pedidoId.longValue())
+                .then()
+                .statusCode(HttpStatus.OK.value());
+        saldoDisponivel(64.5f);
+
+        givenAdmin()
+                .body("{ \"motivo\": \"Teste de reposição de saldo\" }")
+                .when()
+                .put("/api/pedidos/{id}/cancelar", pedidoId.longValue())
+                .then()
+                .statusCode(HttpStatus.NO_CONTENT.value());
+        saldoDisponivel(100);
+    }
+
+    @Test
+    @DisplayName("Saldo e quantidade do item aceitam no máximo 3 casas decimais")
+    void quandoQuantidadeTemMaisDeTresCasas_deveRetornar400() {
+        associar("10.5");
+        saldoDisponivel(10.5f);
+
+        givenAdmin()
+                .body("""
+                        {
+                          "clienteId": %d,
+                          "itens": [ { "produtoId": %d, "estanteId": %d, "quantidade": 1.2345 } ]
+                        }
+                        """.formatted(clienteId, produtoId, estanteId))
+                .when()
+                .post("/api/pedidos")
+                .then()
+                .statusCode(HttpStatus.BAD_REQUEST.value());
+    }
+
+    private void associar(String saldo) {
+        givenAdmin()
+                .body("""
+                        {
+                          "estanteId": %d,
+                          "produtoId": %d,
+                          "precoVenda": 15.00,
+                          "quantidadeEstoque": %s
+                        }
+                        """.formatted(estanteId, produtoId, saldo))
+                .when()
+                .post("/api/estantes-produtos")
+                .then()
+                .statusCode(HttpStatus.CREATED.value());
+    }
+
+    private void saldoDisponivel(Object esperado) {
+        givenUser()
+                .when()
+                .get("/api/estantes-produtos/estante/{id}/disponiveis", estanteId)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("[0].quantidade", equalTo(esperado));
     }
 
     @Test
