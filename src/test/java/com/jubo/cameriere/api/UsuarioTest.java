@@ -13,6 +13,25 @@ class UsuarioTest extends ApiAuthSupport {
     @DisplayName("Criar usuário válido retorna 201 sem expor senha")
     void quandoCriarUsuarioComDadosValidos_deveRetornar201() {
         String email = emailUnico("joao");
+        // Operadores (escolas) precisam estar vinculados a um cliente
+        Integer clienteId = givenAdmin()
+                .body("""
+                        {
+                            "nome": "Escola do Operador",
+                            "cnpj": "%s",
+                            "email": "%s",
+                            "telefone": "(11) 99999-9999",
+                            "endereco": {
+                                "logradouro": "Rua Exemplo, 123",
+                                "cep": "12345-678",
+                                "cidade": "São Paulo",
+                                "estado": "SP"
+                            }
+                        }
+                        """.formatted(cnpjUnico(), emailUnico("escola")))
+                .post("/api/clientes")
+                .then().statusCode(HttpStatus.CREATED.value())
+                .extract().path("id");
 
         givenAdmin()
                 .body("""
@@ -20,9 +39,10 @@ class UsuarioTest extends ApiAuthSupport {
                             "nome": "João Silva",
                             "email": "%s",
                             "senha": "Senha@2026",
-                            "admin": false
+                            "admin": false,
+                            "clienteId": %d
                         }
-                        """.formatted(email))
+                        """.formatted(email, clienteId))
                 .when()
                 .post("/api/usuarios")
                 .then()
