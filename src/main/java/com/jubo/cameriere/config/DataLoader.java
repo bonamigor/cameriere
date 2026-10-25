@@ -73,7 +73,7 @@ public class DataLoader implements CommandLineRunner {
                 .estante(estante)
                 .produto(cafe)
                 .precoVenda(new BigDecimal("42.90"))
-                .quantidade(100)
+                .quantidade(BigDecimal.valueOf(100))
                 .ativo(true)
                 .build();
 
@@ -81,7 +81,7 @@ public class DataLoader implements CommandLineRunner {
                 .estante(estante)
                 .produto(acucar)
                 .precoVenda(new BigDecimal("5.50"))
-                .quantidade(200)
+                .quantidade(BigDecimal.valueOf(200))
                 .ativo(true)
                 .build();
 
@@ -89,7 +89,7 @@ public class DataLoader implements CommandLineRunner {
                 .estante(estante)
                 .produto(copo)
                 .precoVenda(new BigDecimal("0.25"))
-                .quantidade(5000)
+                .quantidade(BigDecimal.valueOf(5000))
                 .ativo(true)
                 .build();
 

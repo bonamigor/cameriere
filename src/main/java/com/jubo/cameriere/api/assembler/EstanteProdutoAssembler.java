@@ -40,7 +40,7 @@ public class EstanteProdutoAssembler {
                 .unidadeMedidaSigla(unidade != null ? unidade.getSigla() : null)
                 .unidadeMedidaDescricao(unidade != null ? unidade.getDescricao() : null)
                 .precoVenda(ep.getPrecoVenda())
-                .quantidade(ep.getQuantidade())
+                .quantidade(ep.getQuantidade().stripTrailingZeros())
                 .ativo(ep.getAtivo())
                 .dataCadastro(ep.getDataCadastro())
                 .dataAtualizacao(ep.getDataAtualizacao())

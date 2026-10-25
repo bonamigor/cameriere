@@ -85,8 +85,9 @@ public class PedidoService {
 
             if (!estanteProduto.isDisponivel() || !estanteProduto.possuiEstoqueSuficiente(itemCommand.quantidade())) {
                 throw new EstoqueInsuficienteException(
-                        String.format("Produto %s sem estoque suficiente. Disponível: %d",
-                                estanteProduto.getProduto().getNome(), estanteProduto.getQuantidade())
+                        String.format("Produto %s sem estoque suficiente. Disponível: %s",
+                                estanteProduto.getProduto().getNome(),
+                                estanteProduto.getQuantidade().stripTrailingZeros().toPlainString())
                 );
             }
 

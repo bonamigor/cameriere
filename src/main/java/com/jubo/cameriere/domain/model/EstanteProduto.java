@@ -35,8 +35,9 @@ public class EstanteProduto {
     @Column(name = "preco_venda", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoVenda;
 
-    @Column(name = "quantidade", nullable = false)
-    private Integer quantidade;
+    /** Saldo do edital ainda disponível para pedidos (até 3 casas decimais, ex.: 35,5 kg). */
+    @Column(name = "quantidade", nullable = false, precision = 12, scale = 3)
+    private BigDecimal quantidade;
 
     @Column(nullable = false)
     private Boolean ativo;
@@ -60,34 +61,34 @@ public class EstanteProduto {
     }
 
     public boolean isDisponivel() {
-        return Boolean.TRUE.equals(ativo) && quantidade != null && quantidade > 0;
+        return Boolean.TRUE.equals(ativo) && quantidade != null && quantidade.signum() > 0;
     }
 
     public boolean possuiEstoqueSuficiente(BigDecimal quantidadeSolicitada) {
         if (quantidadeSolicitada == null || quantidade == null) {
             return false;
         }
-        return BigDecimal.valueOf(quantidade).compareTo(quantidadeSolicitada) >= 0;
+        return quantidade.compareTo(quantidadeSolicitada) >= 0;
     }
 
     public void baixarEstoque(BigDecimal quantidadeSolicitada) {
         if (!possuiEstoqueSuficiente(quantidadeSolicitada)) {
             throw new EstoqueInsuficienteException(
-                    String.format("Estoque insuficiente para o produto %s. Disponível: %d",
-                            produto != null ? produto.getNome() : id, quantidade));
+                    String.format("Estoque insuficiente para o produto %s. Disponível: %s",
+                            produto != null ? produto.getNome() : id, quantidade.stripTrailingZeros().toPlainString()));
         }
-        this.quantidade = this.quantidade - quantidadeSolicitada.intValue();
+        this.quantidade = this.quantidade.subtract(quantidadeSolicitada);
     }
 
     public void reporEstoque(BigDecimal quantidadeReposta) {
         if (quantidadeReposta == null) {
             return;
         }
-        this.quantidade = this.quantidade + quantidadeReposta.intValue();
+        this.quantidade = this.quantidade.add(quantidadeReposta);
     }
 
-    public BigDecimal calcularValorTotal(Integer quantidade) {
-        return precoVenda.multiply(BigDecimal.valueOf(quantidade));
+    public BigDecimal calcularValorTotal(BigDecimal quantidade) {
+        return precoVenda.multiply(quantidade);
     }
 
     public void ativar() {
@@ -95,7 +96,7 @@ public class EstanteProduto {
     }
 
     public void desativar() {
-        if (this.quantidade != null && this.quantidade > 0) {
+        if (this.quantidade != null && this.quantidade.signum() > 0) {
             throw new IllegalStateException("Não é possível desativar produto com estoque positivo");
         }
         this.ativo = false;

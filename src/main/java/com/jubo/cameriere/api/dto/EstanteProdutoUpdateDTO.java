@@ -1,6 +1,7 @@
 package com.jubo.cameriere.api.dto;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,8 +19,9 @@ public class EstanteProdutoUpdateDTO {
     @DecimalMin(value = "0.01", message = "Preço de venda deve ser maior que zero")
     private BigDecimal precoVenda;
 
-    @Min(value = 0, message = "Quantidade em estoque não pode ser negativa")
-    private Integer quantidadeEstoque;
+    @DecimalMin(value = "0", message = "Quantidade em estoque não pode ser negativa")
+    @Digits(integer = 9, fraction = 3, message = "Quantidade em estoque aceita até 3 casas decimais")
+    private BigDecimal quantidadeEstoque;
 
     @Min(value = 0, message = "Estoque mínimo não pode ser negativo")
     private Integer estoqueMinimo;
