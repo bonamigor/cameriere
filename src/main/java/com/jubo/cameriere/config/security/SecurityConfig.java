@@ -34,7 +34,7 @@ import java.time.OffsetDateTime;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, AuthCookieProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, AuthCookieProperties.class, MfaProperties.class})
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -53,7 +53,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/login",
+                                "/api/auth/login/2fa",
+                                "/api/auth/logout",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/api-docs/**",
@@ -61,6 +63,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
+                        .requestMatchers("/api/auditoria/**").hasRole("ADMIN")
                         .requestMatchers("/api/pedidos/relatorios/**").hasRole("ADMIN")
 
                         .requestMatchers(HttpMethod.POST, "/api/empresas/**").hasRole("ADMIN")

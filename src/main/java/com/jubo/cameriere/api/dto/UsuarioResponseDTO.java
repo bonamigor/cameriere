@@ -9,6 +9,7 @@ public record UsuarioResponseDTO(
         Boolean admin,
         Long clienteId,
         String clienteNome,
+        boolean doisFatoresAtivo,
         LocalDateTime dataCriacao,
         LocalDateTime dataAtualizacao
 ) {

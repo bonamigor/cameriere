@@ -19,6 +19,7 @@ public class UsuarioAutenticado implements UserDetails {
     private final String senha;
     private final Role role;
     private final Long clienteId;
+    private final boolean totpAtivo;
 
     public UsuarioAutenticado(Usuario usuario) {
         this.id = usuario.getId();
@@ -27,6 +28,7 @@ public class UsuarioAutenticado implements UserDetails {
         this.senha = usuario.getSenha();
         this.role = Boolean.TRUE.equals(usuario.getAdmin()) ? Role.ADMIN : Role.USER;
         this.clienteId = usuario.getCliente() != null ? usuario.getCliente().getId() : null;
+        this.totpAtivo = usuario.isTotpAtivo();
     }
 
     @Override

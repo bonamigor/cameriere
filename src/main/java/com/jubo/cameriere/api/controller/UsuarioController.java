@@ -4,11 +4,17 @@ import com.jubo.cameriere.api.assembler.UsuarioAssembler;
 import com.jubo.cameriere.api.dto.UsuarioRequestDTO;
 import com.jubo.cameriere.api.dto.UsuarioResponseDTO;
 import com.jubo.cameriere.api.dto.UsuarioUpdateDTO;
+import com.jubo.cameriere.api.security.MfaService;
+import com.jubo.cameriere.api.security.UsuarioAutenticado;
+import com.jubo.cameriere.domain.model.AcaoAuditoria;
 import com.jubo.cameriere.domain.model.Usuario;
+import com.jubo.cameriere.domain.service.AuditoriaService;
 import com.jubo.cameriere.domain.service.UsuarioService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -22,6 +28,8 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final UsuarioAssembler usuarioAssembler;
+    private final MfaService mfaService;
+    private final AuditoriaService auditoriaService;
 
     @GetMapping
     public ResponseEntity<List<UsuarioResponseDTO>> listarTodosUsuarios() {
@@ -62,6 +70,17 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarUsuario(@PathVariable Long id) {
         usuarioService.deletarUsuario(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Para quem perdeu o celular e os códigos de recuperação: o usuário configura o 2FA de novo. */
+    @DeleteMapping("/{id}/2fa")
+    public ResponseEntity<Void> redefinirMfa(@PathVariable Long id,
+                                             @AuthenticationPrincipal UsuarioAutenticado admin,
+                                             HttpServletRequest http) {
+        mfaService.redefinir(id);
+        auditoriaService.registrar(AcaoAuditoria.MFA_REDEFINIDO, admin.getId(), admin.getEmail(),
+                http.getRemoteAddr(), "Usuário " + id);
         return ResponseEntity.noContent().build();
     }
 }
