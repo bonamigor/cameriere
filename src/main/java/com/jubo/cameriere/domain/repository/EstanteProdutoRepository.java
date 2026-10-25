@@ -49,8 +49,10 @@ public interface EstanteProdutoRepository extends JpaRepository<EstanteProduto, 
     @Query("""
             SELECT ep FROM EstanteProduto ep
             JOIN FETCH ep.estante
-            JOIN FETCH ep.produto
+            JOIN FETCH ep.produto p
+            LEFT JOIN FETCH p.unidadeMedida
             WHERE ep.estante.id = :estanteId AND ep.quantidade > 0 AND ep.ativo = true
+            ORDER BY p.nome
             """)
     List<EstanteProduto> findProdutosDisponiveisNaEstante(@Param("estanteId") Long estanteId);
 

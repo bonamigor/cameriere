@@ -12,6 +12,7 @@ class EstanteProdutoTest extends ApiAuthSupport {
 
     private Long estanteId;
     private Long produtoId;
+    private String sigla;
 
     @BeforeEach
     void prepararDados() {
@@ -53,7 +54,7 @@ class EstanteProdutoTest extends ApiAuthSupport {
                 .path("id");
         estanteId = estanteIdNum.longValue();
 
-        String sigla = siglaUnica();
+        sigla = siglaUnica();
         givenAdmin()
                 .body("""
                         { "sigla": "%s", "descricao": "Unidade EP" }
@@ -100,6 +101,35 @@ class EstanteProdutoTest extends ApiAuthSupport {
                 .body("id", notNullValue())
                 .body("precoVenda", equalTo(15.0f))
                 .body("quantidade", equalTo(50));
+    }
+
+    @Test
+    @DisplayName("Itens disponíveis da estante trazem a unidade de medida do produto")
+    void quandoListarDisponiveis_deveIncluirUnidadeDeMedida() {
+        givenAdmin()
+                .body("""
+                        {
+                          "estanteId": %d,
+                          "produtoId": %d,
+                          "precoVenda": 15.00,
+                          "quantidadeEstoque": 50
+                        }
+                        """.formatted(estanteId, produtoId))
+                .when()
+                .post("/api/estantes-produtos")
+                .then()
+                .statusCode(HttpStatus.CREATED.value());
+
+        givenUser()
+                .when()
+                .get("/api/estantes-produtos/estante/{id}/disponiveis", estanteId)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("$", hasSize(1))
+                .body("[0].produtoId", equalTo(produtoId.intValue()))
+                .body("[0].unidadeMedidaSigla", equalTo(sigla))
+                .body("[0].unidadeMedidaDescricao", equalTo("Unidade EP"))
+                .body("[0].quantidade", equalTo(50));
     }
 
     @Test

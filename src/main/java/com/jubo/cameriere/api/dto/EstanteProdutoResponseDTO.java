@@ -18,6 +18,8 @@ public class EstanteProdutoResponseDTO {
     private String estantePeriodo;
     private Long produtoId;
     private String produtoNome;
+    private String unidadeMedidaSigla;
+    private String unidadeMedidaDescricao;
     private BigDecimal precoVenda;
     private Integer quantidade;
     private Boolean ativo;
