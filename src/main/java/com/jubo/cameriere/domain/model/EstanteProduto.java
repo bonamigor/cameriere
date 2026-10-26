@@ -36,7 +36,7 @@ public class EstanteProduto {
     private BigDecimal precoVenda;
 
     /** Saldo do edital ainda disponível para pedidos (até 3 casas decimais, ex.: 35,5 kg). */
-    @Column(name = "quantidade", nullable = false, precision = 12, scale = 3)
+    @Column(name = "quantidade", nullable = false, precision = 15, scale = 3)
     private BigDecimal quantidade;
 
     @Column(nullable = false)
